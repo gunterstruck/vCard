@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <script src="/THiXX-OTH/assets/theme-bootstrap.js"></script>
-    
+
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self';">
-    
-    <title>ThiXX - NFC PWA</title>
+
+    <title>vCard NFC Writer</title>
     <link rel="manifest" href="/THiXX-OTH/manifest.webmanifest">
     <link rel="stylesheet" href="/THiXX-OTH/assets/style.css">
-    
+
     <meta name="theme-color" content="#FCFCFD">
 </head>
 <body>
@@ -45,10 +45,8 @@
         <main>
             <div id="read-tab" class="tab-content active">
                 <div id="read-result" class="collapsible">
-                    <h2 data-i18n="acceptanceProtocol"></h2>
-                    <div id="protocol-card" class="protocol-card">
-                        </div>
-                    <div id="doc-link-container" class="doc-link-container">
+                    <h2 data-i18n="contactCard"></h2>
+                    <div id="contact-card" class="protocol-card">
                         </div>
                     <div id="read-actions" class="read-actions-container hidden">
                         <button id="copy-to-form-btn" class="btn" data-i18n="copyToForm"></button>
@@ -67,57 +65,47 @@
 
             <div id="write-tab" class="tab-content">
                 <div id="write-form-container" class="collapsible">
-                    <h2 data-i18n="acceptanceProtocol"></h2>
+                    <h2 data-i18n="contactCard"></h2>
                     <form id="nfc-write-form" novalidate>
                         <div class="form-grid">
-                            <div class="form-group"><label for="HK-Nr" data-i18n="HK-Nr"></label><input type="text" id="HK-Nr" name="HK-Nr"></div>
-                            <div class="form-group"><label for="KKS" data-i18n="KKS"></label><input type="text" id="KKS" name="KKS"></div>
-                            <div class="form-group"><label for="Leistung" data-i18n="Leistung"></label><input type="number" step="0.1" id="Leistung" name="Leistung"></div>
-                            <div class="form-group"><label for="Strom" data-i18n="Strom"></label><input type="number" step="0.1" id="Strom" name="Strom"></div>
-                            <div class="form-group"><label for="Spannung" data-i18n="Spannung"></label><input type="number" id="Spannung" name="Spannung"></div>
-                            <div class="form-group"><label for="Widerstand" data-i18n="Widerstand"></label><input type="number" step="0.1" id="Widerstand" name="Widerstand"></div>
-                            <div class="form-group"><label for="Regler" data-i18n="Regler"></label><input type="number" id="Regler" name="Regler"></div>
-                            <div class="form-group"><label for="Sicherheitsregler/Begrenzer" data-i18n="Sicherheitsregler/Begrenzer"></label><input type="number" id="Sicherheitsregler/Begrenzer" name="Sicherheitsregler/Begrenzer"></div>
-                            <div class="form-group"><label for="Wächter" data-i18n="Wächter"></label><input type="number" id="Wächter" name="Wächter"></div>
-                            <div class="form-group"><label for="Projekt-Nr" data-i18n="Projekt-Nr"></label><input type="text" id="Projekt-Nr" name="Projekt-Nr"></div>
-                            <div class="form-group full-width"><label for="Dokumentation" data-i18n="Dokumentation"></label><input type="url" id="Dokumentation" name="Dokumentation" placeholder="https://beispiel.de/anleitung.pdf"></div>
-                            <div class="form-group"><label for="Anzahl Heizkabeleinheiten" data-i18n="Anzahl Heizkabeleinheiten"></label><input type="number" id="Anzahl Heizkabeleinheiten" name="Anzahl Heizkabeleinheiten"></div>
-                            <div class="form-group"><label for="Trennkasten" data-i18n="Trennkasten"></label><input type="number" id="Trennkasten" name="Trennkasten"></div>
-                            <div class="form-group full-width"><label for="Heizkabeltyp" data-i18n="Heizkabeltyp"></label><input type="text" id="Heizkabeltyp" name="Heizkabeltyp"></div>
-                        </div>
-                        
-                        <fieldset class="form-group">
-                            <legend data-i18n="Schaltung"></legend>
-                            <div class="radio-group">
-                                <label><input type="radio" name="Schaltung" value="Stern" checked> <span data-i18n="schaltungOptions.stern"></span></label>
-                                <label><input type="radio" name="Schaltung" value="Dreieck"> <span data-i18n="schaltungOptions.dreieck"></span></label>
-                                <label><input type="radio" name="Schaltung" value="Wechselstrom"> <span data-i18n="schaltungOptions.wechselstrom"></span></label>
+                            <div class="form-group">
+                                <label for="fn" data-i18n="fn"></label>
+                                <input type="text" id="fn" name="fn">
                             </div>
-                        </fieldset>
-
-                        <fieldset class="form-group">
-                            <legend data-i18n="Messwertgeber"></legend>
-                            <div class="checkbox-group">
-                                <label><input type="checkbox" id="has_PT100" name="has_PT100"> PT 100</label>
-                                <input type="number" id="PT 100" name="PT 100" min="0" value="0" disabled>
-                                <label><input type="checkbox" id="has_NiCr-Ni" name="has_NiCr-Ni"> NiCr-Ni</label>
-                                <input type="number" id="NiCr-Ni" name="NiCr-Ni" min="0" value="0" disabled>
+                            <div class="form-group">
+                                <label for="ln" data-i18n="ln"></label>
+                                <input type="text" id="ln" name="ln">
                             </div>
-                        </fieldset>
-                        
-                        <div class="form-grid">
-                            <div class="form-group"><label for="geprüft von" data-i18n="geprüft von"></label><input type="text" id="geprüft von" name="geprüft von"></div>
-                            <div class="form-group"><label for="am" data-i18n="am"></label><input type="date" id="am" name="am"></div>
+                            <div class="form-group full-width">
+                                <label for="org" data-i18n="org"></label>
+                                <input type="text" id="org" name="org">
+                            </div>
+                            <div class="form-group full-width">
+                                <label for="title" data-i18n="title"></label>
+                                <input type="text" id="title" name="title">
+                            </div>
+                            <div class="form-group">
+                                <label for="tel" data-i18n="tel"></label>
+                                <input type="tel" id="tel" name="tel">
+                            </div>
+                            <div class="form-group">
+                                <label for="email" data-i18n="email"></label>
+                                <input type="email" id="email" name="email">
+                            </div>
+                            <div class="form-group full-width">
+                                <label for="url" data-i18n="url"></label>
+                                <input type="url" id="url" name="url" placeholder="https://beispiel.de">
+                            </div>
                         </div>
                     </form>
 
                     <div class="file-operations">
-                         <button id="save-json-btn" class="btn" data-i18n="saveFile"></button>
-                         <label id="load-json-label" class="btn file-input-label" data-i18n="loadFile">
-                             <input type="file" id="load-json-input" accept=".json" class="visually-hidden">
+                         <button id="save-vcf-btn" class="btn" data-i18n="saveFile"></button>
+                         <label id="load-vcf-label" class="btn file-input-label" data-i18n="loadFile">
+                             <input type="file" id="load-vcf-input" accept=".vcf,.vcard" class="visually-hidden">
                          </label>
                     </div>
-                    
+
                     <div id="payload-container">
                         <details class="raw-data-details">
                             <summary data-i18n="showRawData"></summary>
@@ -138,7 +126,7 @@
                     Günter Struck<br>
                     Musterstraße 1<br>
                     12345 Musterstadt</p>
-                    
+
                     <div class="legal-actions">
                         <div class="legal-links">
                             <a href="/THiXX-OTH/assets/datenschutz.html" target="_blank" rel="noopener noreferrer" data-i18n="privacyPolicyLink"></a>
@@ -150,7 +138,7 @@
                 <div class="collapsible-overlay" data-i18n="collapsibleHint"></div>
             </div>
         </main>
-        
+
         <footer>
             <div id="message-banner" class="message-banner hidden" role="alert" aria-live="polite"></div>
             <div id="nfc-fallback" class="message-banner err hidden" data-i18n="nfcFallback">
