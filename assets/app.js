@@ -43,6 +43,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveVcfBtn = document.getElementById('save-vcf-btn');
     const loadVcfInput = document.getElementById('load-vcf-input');
     const loadVcfLabel = document.getElementById('load-vcf-label');
+    const importContactBtn = document.getElementById('import-contact-btn');
+    const saveScannedBtn = document.getElementById('save-scanned-btn');
     const nfcFallback = document.getElementById('nfc-fallback');
     const messageBanner = document.getElementById('message-banner');
     const form = document.getElementById('nfc-write-form');
@@ -226,6 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (copyToFormBtn) {
                 copyToFormBtn.addEventListener('click', populateFormFromScan);
             }
+            if(saveScannedBtn) saveScannedBtn.addEventListener('click', saveScannedDataAsVcf);
             if(saveVcfBtn) saveVcfBtn.addEventListener('click', saveFormAsVcf);
             if(loadVcfInput) loadVcfInput.addEventListener('change', loadVcfIntoForm);
             if (loadVcfLabel && loadVcfInput) {
@@ -233,6 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     loadVcfInput.click();
                 });
             }
+            if(importContactBtn) importContactBtn.addEventListener('click', importFromContacts);
         }
 
         if(form) {
@@ -240,6 +244,9 @@ document.addEventListener('DOMContentLoaded', () => {
             form.addEventListener('change', updatePayloadOnChange);
         }
         if(reloadButton) reloadButton.addEventListener('click', handleReloadClick);
+
+        // Check Contact Picker API support
+        checkContactPickerSupport();
     }
 
     // --- vCard Functions ---
@@ -269,9 +276,14 @@ document.addEventListener('DOMContentLoaded', () => {
             lines.push(`TITLE:${data.title}`);
         }
 
-        // Phone
+        // Phone (Mobile)
         if (data.tel) {
             lines.push(`TEL;TYPE=CELL:${data.tel}`);
+        }
+
+        // Work Phone
+        if (data.telWork) {
+            lines.push(`TEL;TYPE=WORK,VOICE:${data.telWork}`);
         }
 
         // Email
@@ -282,6 +294,15 @@ document.addEventListener('DOMContentLoaded', () => {
         // Website
         if (data.url) {
             lines.push(`URL:${data.url}`);
+        }
+
+        // Address (Work) - ADR format: ;;street;city;;zip;country
+        if (data.street || data.city || data.zip || data.country) {
+            const street = data.street || '';
+            const city = data.city || '';
+            const zip = data.zip || '';
+            const country = data.country || '';
+            lines.push(`ADR;TYPE=WORK:;;${street};${city};;${zip};${country}`);
         }
 
         lines.push('END:VCARD');
@@ -327,10 +348,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 data.title = line.substring(6);
             }
 
-            // TEL - Phone
+            // TEL - Phone (distinguish between mobile and work)
             else if (line.startsWith('TEL')) {
                 const tel = line.substring(line.indexOf(':') + 1);
-                data.tel = tel;
+                // Check if it's a work phone
+                if (line.includes('TYPE=WORK') || line.includes('type=work')) {
+                    data.telWork = tel;
+                } else if (!data.tel) {
+                    // Default to mobile if not specified
+                    data.tel = tel;
+                }
             }
 
             // EMAIL - Email
@@ -342,6 +369,19 @@ document.addEventListener('DOMContentLoaded', () => {
             // URL - Website
             else if (line.startsWith('URL:')) {
                 data.url = line.substring(4);
+            }
+
+            // ADR - Address (format: ;;street;city;;zip;country)
+            else if (line.startsWith('ADR')) {
+                const adr = line.substring(line.indexOf(':') + 1);
+                const parts = adr.split(';');
+                // ADR format: POBox;ExtendedAddress;Street;City;Region;PostalCode;Country
+                if (parts.length >= 7) {
+                    data.street = parts[2] || '';
+                    data.city = parts[3] || '';
+                    data.zip = parts[5] || '';
+                    data.country = parts[6] || '';
+                }
             }
         }
 
@@ -385,8 +425,21 @@ document.addEventListener('DOMContentLoaded', () => {
         addPair('org', data.org);
         addPair('title', data.title);
         addPair('tel', data.tel);
+        addPair('telWork', data.telWork);
         addPair('email', data.email);
         addPair('url', data.url);
+
+        // Display address if any field is present
+        if (data.street || data.city || data.zip || data.country) {
+            const addressParts = [
+                data.street,
+                [data.zip, data.city].filter(Boolean).join(' '),
+                data.country
+            ].filter(Boolean);
+            if (addressParts.length > 0) {
+                addPair('address', addressParts.join(', '));
+            }
+        }
 
         contactCard.appendChild(fragment);
     }
@@ -699,8 +752,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        const fullName = [data.fn, data.ln].filter(Boolean).join('_') || 'contact';
-        a.download = `${fullName}.vcf`;
+        let filename = [data.fn, data.ln].filter(Boolean).join('_') || 'contact';
+        // Force .vcf extension
+        if (!filename.toLowerCase().endsWith('.vcf')) {
+            filename += '.vcf';
+        }
+        a.download = filename;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -711,6 +768,21 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadVcfIntoForm(event) {
         const file = event.target.files[0];
         if (!file) return;
+
+        // Strict VCF file validation
+        const fileName = file.name.toLowerCase();
+        const validExtensions = ['.vcf', '.vcard'];
+        const validMimeTypes = ['text/vcard', 'text/x-vcard'];
+
+        const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
+        const hasValidMimeType = validMimeTypes.includes(file.type);
+
+        if (!hasValidExtension && !hasValidMimeType) {
+            showMessage(t('errors.invalidFileType'), 'err');
+            if (event.target) event.target.value = null;
+            return;
+        }
+
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
@@ -792,5 +864,115 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             toggle();
         });
+    }
+
+    // --- Contact Picker API Functions ---
+    /**
+     * Checks if Contact Picker API is supported and shows/hides import button
+     */
+    function checkContactPickerSupport() {
+        if ('contacts' in navigator && 'ContactsManager' in window) {
+            if (importContactBtn) {
+                importContactBtn.classList.remove('hidden');
+            }
+        }
+    }
+
+    /**
+     * Imports contact data from native device contacts using Contact Picker API
+     */
+    async function importFromContacts() {
+        if (!('contacts' in navigator)) {
+            showMessage(t('errors.contactPickerNotSupported'), 'err');
+            return;
+        }
+
+        try {
+            const props = ['name', 'email', 'tel', 'address'];
+            const opts = { multiple: false };
+
+            const contacts = await navigator.contacts.select(props, opts);
+
+            if (contacts && contacts.length > 0) {
+                const contact = contacts[0];
+                const data = {};
+
+                // Map name
+                if (contact.name && contact.name.length > 0) {
+                    const nameParts = contact.name[0].split(' ');
+                    if (nameParts.length >= 2) {
+                        data.fn = nameParts[0];
+                        data.ln = nameParts.slice(1).join(' ');
+                    } else {
+                        data.fn = contact.name[0];
+                    }
+                }
+
+                // Map email
+                if (contact.email && contact.email.length > 0) {
+                    data.email = contact.email[0];
+                }
+
+                // Map phone numbers (try to distinguish mobile vs work)
+                if (contact.tel && contact.tel.length > 0) {
+                    // First number goes to mobile by default
+                    data.tel = contact.tel[0];
+                    // If there's a second number, use it for work phone
+                    if (contact.tel.length > 1) {
+                        data.telWork = contact.tel[1];
+                    }
+                }
+
+                // Map address
+                if (contact.address && contact.address.length > 0) {
+                    const addr = contact.address[0];
+                    if (typeof addr === 'object') {
+                        data.street = addr.addressLine?.[0] || '';
+                        data.city = addr.city || '';
+                        data.zip = addr.postalCode || '';
+                        data.country = addr.country || '';
+                    }
+                }
+
+                // Populate form with imported data
+                appState.scannedDataObject = data;
+                populateFormFromScan();
+                showMessage(t('messages.importSuccess'), 'ok');
+            }
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                ErrorHandler.handle(error, 'ContactImport');
+            }
+        }
+    }
+
+    /**
+     * Saves the currently scanned data as a VCF file
+     */
+    function saveScannedDataAsVcf() {
+        if (!appState.scannedDataObject) {
+            showMessage(t('messages.noDataToSave'), 'err');
+            return;
+        }
+
+        const vcardString = createVCardString(appState.scannedDataObject);
+        const blob = new Blob([vcardString], { type: 'text/vcard' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+
+        const data = appState.scannedDataObject;
+        let filename = [data.fn, data.ln].filter(Boolean).join('_') || 'scanned_contact';
+        // Force .vcf extension
+        if (!filename.toLowerCase().endsWith('.vcf')) {
+            filename += '.vcf';
+        }
+        a.download = filename;
+
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => { URL.revokeObjectURL(url); }, CONFIG.URL_REVOKE_DELAY);
+        showMessage(t('messages.saveSuccess'), 'ok');
     }
 });
