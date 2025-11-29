@@ -1,5 +1,5 @@
 {
-  "name": "vCard NFC Writer",
+  "name": "vCard",
   "short_name": "vCard",
   "description": "NFC vCard Writer - Kontakte per NFC lesen und schreiben",
   "start_url": "/vCard/index.html",
@@ -22,4 +22,5 @@
       "purpose": "any maskable"
     }
   ]
+
 }
