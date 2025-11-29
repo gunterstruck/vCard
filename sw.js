@@ -10,12 +10,12 @@
 // REPO_PATH definiert für vCard Projekt
 const REPO_PATH = '/vCard/';
 // Cache-Version - Reset to v01 due to namespace change (thixx-oth → vcard)
-const CORE_CACHE_NAME = 'vcard-core-v01';
+const CORE_CACHE_NAME = 'vcard-core-v02';
 const DOC_CACHE_PREFIX = 'vcard-docs';
 
 // IndexedDB Configuration
 const DB_NAME = 'vcard-db';
-const DB_VERSION = 2.01; // ✅ UPGRADED: Erweiterte Felder für Retry & Logging
+const DB_VERSION = 2; // ✅ UPGRADED: Erweiterte Felder für Retry & Logging
 const STORE_NAME = 'pending-downloads';
 const MAX_RETRY_COUNT = 3; // Maximale Anzahl von Wiederholungsversuchen
 
@@ -623,6 +623,7 @@ self.addEventListener('backgroundfetchclick', (event) => {
         }
     })());
 });
+
 
 
 
