@@ -1,25 +1,18 @@
 /**
- * SERVICE WORKER - OPTION B (EMPFOHLEN)
- * ======================================
- * Vereinfachte Strategie:
- * - Core-Assets: Ein gemeinsamer Cache (identisch für alle Tenants)
- * - Brand-Assets: Werden bei Bedarf gecacht (per Request)
- * - Dokumente: Tenant-spezifisch
+ * SERVICE WORKER - vCard NFC Writer
+ * ===================================
+ * Simplified caching strategy for PWA offline functionality:
+ * - Core Assets: Cached for offline availability (App Shell)
+ * - Offline Fallback: Shows offline page when network unavailable
  */
 
-// REPO_PATH definiert für vCard Projekt
+// Repository path
 const REPO_PATH = '/vCard/';
-// Cache-Version - Reset to v01 due to namespace change (thixx-oth → vcard)
-const CORE_CACHE_NAME = 'vcard-core-v04';
-const DOC_CACHE_PREFIX = 'vcard-docs';
 
-// IndexedDB Configuration
-const DB_NAME = 'vcard-db';
-const DB_VERSION = 2; // ✅ UPGRADED: Erweiterte Felder für Retry & Logging
-const STORE_NAME = 'pending-downloads';
-const MAX_RETRY_COUNT = 3; // Maximale Anzahl von Wiederholungsversuchen
+// Cache version - increment to force cache update
+const CORE_CACHE_NAME = 'vcard-core-v05';
 
-// Core Assets für Offline-Verfügbarkeit
+// Core Assets for offline availability
 const CORE_ASSETS = [
     '/vCard/offline.html',
     '/vCard/index.html',
@@ -37,189 +30,12 @@ const CORE_ASSETS = [
 ];
 
 // ============================================================
-// IndexedDB Helper Functions (Service Worker)
+// Service Worker Lifecycle Events
 // ============================================================
 
 /**
- * Opens IndexedDB connection
- * @returns {Promise<IDBDatabase>}
+ * Safe cache helper - adds assets with error handling
  */
-function openDB() {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(request.result);
-
-        request.onupgradeneeded = (event) => {
-            const db = event.target.result;
-            const oldVersion = event.oldVersion;
-
-            // V1: Create object store if it doesn't exist
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
-                const store = db.createObjectStore(STORE_NAME, { keyPath: 'url' });
-                console.log('[SW DB] Object store created:', STORE_NAME);
-            }
-
-            // V2: Erweiterte Felder für Retry-Logik & Analytics
-            // Hinweis: Bestehende Einträge behalten ihre Struktur, neue Felder werden bei Bedarf hinzugefügt
-            if (oldVersion < 2) {
-                console.log('[SW DB] Upgrading to V2 - Enhanced retry & logging support');
-                // Struktur wird dynamisch in den Funktionen erweitert
-                // Neue Felder: retryCount, addedAt, downloadedAt, source, lastError
-            }
-        };
-    });
-}
-
-/**
- * Get all pending downloads from IndexedDB
- * @returns {Promise<Array>} Array of download objects with metadata
- */
-async function getPendingDownloadsFromDB() {
-    try {
-        const db = await openDB();
-        const transaction = db.transaction(STORE_NAME, 'readonly');
-        const store = transaction.objectStore(STORE_NAME);
-
-        return new Promise((resolve, reject) => {
-            const request = store.getAll();
-
-            request.onsuccess = () => {
-                const items = request.result || [];
-                // Filter out items that have exceeded retry count
-                const validItems = items.filter(item => {
-                    const retryCount = item.retryCount || 0;
-                    return retryCount < MAX_RETRY_COUNT;
-                });
-                console.log(`[SW DB] Retrieved ${validItems.length} pending downloads (${items.length - validItems.length} exceeded retry limit)`);
-                resolve(validItems);
-            };
-
-            request.onerror = () => {
-                console.error('[SW DB] Failed to get pending downloads:', request.error);
-                reject(request.error);
-            };
-        });
-    } catch (error) {
-        console.error('[SW DB] Failed to open database:', error);
-        return [];
-    }
-}
-
-/**
- * Remove a pending download from IndexedDB
- * @param {string} url - The URL to remove
- * @returns {Promise<void>}
- */
-async function removePendingDownloadFromDB(url) {
-    try {
-        const db = await openDB();
-        const transaction = db.transaction(STORE_NAME, 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-
-        return new Promise((resolve, reject) => {
-            const request = store.delete(url);
-
-            request.onsuccess = () => {
-                console.log('[SW DB] Removed from queue:', url);
-                resolve();
-            };
-
-            request.onerror = () => {
-                console.error('[SW DB] Failed to remove:', url, request.error);
-                reject(request.error);
-            };
-        });
-    } catch (error) {
-        console.error('[SW DB] Failed to remove pending download:', error);
-    }
-}
-
-/**
- * Update retry count for a failed download
- * @param {string} url - The URL to update
- * @param {string} error - The error message
- * @returns {Promise<void>}
- */
-async function incrementRetryCount(url, error) {
-    try {
-        const db = await openDB();
-        const transaction = db.transaction(STORE_NAME, 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-
-        return new Promise((resolve, reject) => {
-            const getRequest = store.get(url);
-
-            getRequest.onsuccess = () => {
-                const item = getRequest.result;
-                if (item) {
-                    item.retryCount = (item.retryCount || 0) + 1;
-                    item.lastError = error;
-                    item.lastRetryAt = Date.now();
-
-                    const putRequest = store.put(item);
-                    putRequest.onsuccess = () => {
-                        console.log(`[SW DB] Retry count increased to ${item.retryCount} for:`, url);
-                        resolve();
-                    };
-                    putRequest.onerror = () => reject(putRequest.error);
-                } else {
-                    resolve(); // Item doesn't exist anymore
-                }
-            };
-
-            getRequest.onerror = () => reject(getRequest.error);
-        });
-    } catch (error) {
-        console.error('[SW DB] Failed to increment retry count:', error);
-    }
-}
-
-/**
- * Mark download as successful with timestamp
- * @param {string} url - The URL that was downloaded
- * @param {string} source - The source of the download (background-sync, online-event, app-start, background-fetch)
- * @returns {Promise<void>}
- */
-async function markDownloadComplete(url, source) {
-    try {
-        const db = await openDB();
-        const transaction = db.transaction(STORE_NAME, 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-
-        return new Promise((resolve, reject) => {
-            const getRequest = store.get(url);
-
-            getRequest.onsuccess = () => {
-                const item = getRequest.result;
-                if (item) {
-                    item.downloadedAt = Date.now();
-                    item.source = source;
-                    item.status = 'completed';
-
-                    const putRequest = store.put(item);
-                    putRequest.onsuccess = () => {
-                        console.log(`[SW DB] ✅ Download completed via ${source}:`, url);
-                        // Remove after marking complete
-                        store.delete(url);
-                        resolve();
-                    };
-                    putRequest.onerror = () => reject(putRequest.error);
-                } else {
-                    resolve(); // Already removed
-                }
-            };
-
-            getRequest.onerror = () => reject(getRequest.error);
-        });
-    } catch (error) {
-        console.error('[SW DB] Failed to mark download complete:', error);
-    }
-}
-
-// ============================================================
-
 async function safeCacheAddAll(cache, urls) {
     console.log('[Service Worker] Starting robust caching of assets.');
     const promises = urls.map(url => {
@@ -231,6 +47,9 @@ async function safeCacheAddAll(cache, urls) {
     console.log(`[Service Worker] Robust caching finished.`);
 }
 
+/**
+ * Install Event - Cache core assets
+ */
 self.addEventListener('install', (event) => {
     console.log('[Service Worker] Installing...');
     event.waitUntil(
@@ -240,15 +59,17 @@ self.addEventListener('install', (event) => {
     );
 });
 
+/**
+ * Activate Event - Clean up old caches
+ */
 self.addEventListener('activate', (event) => {
     console.log('[Service Worker] Activating...');
     event.waitUntil(
         caches.keys().then((cacheNames) => {
             return Promise.all(
                 cacheNames.map((cacheName) => {
-                    // Behalte nur aktuelle Caches
-                    if (cacheName !== CORE_CACHE_NAME &&
-                        !cacheName.startsWith(DOC_CACHE_PREFIX)) {
+                    // Delete all caches except current version
+                    if (cacheName !== CORE_CACHE_NAME) {
                         console.log('[Service Worker] Deleting old cache:', cacheName);
                         return caches.delete(cacheName);
                     }
@@ -258,43 +79,17 @@ self.addEventListener('activate', (event) => {
     );
 });
 
+// ============================================================
+// Fetch Event - Network strategies
+// ============================================================
+
 self.addEventListener('fetch', (event) => {
     const { request } = event;
     const url = new URL(request.url);
 
-    // PDF-Caching-Logik - PDFs werden bei Bedarf gecacht
-    if (url.pathname.endsWith('.pdf')) {
-        event.respondWith((async () => {
-            const allCacheNames = await caches.keys();
-            const docCacheNames = allCacheNames.filter(name => name.startsWith(DOC_CACHE_PREFIX));
-            const noCorsRequest = new Request(request.url, { mode: 'no-cors' });
-
-            // 1. Versuche, die PDF aus allen Dokument-Caches zu finden
-            for (const cacheName of docCacheNames) {
-                const cache = await caches.open(cacheName);
-                const cachedResponse = await cache.match(noCorsRequest);
-                if (cachedResponse) {
-                    console.log(`[SW] PDF aus Cache serviert: ${cacheName}`);
-                    return cachedResponse;
-                }
-            }
-
-            // 2. Nicht im Cache? Vom Netzwerk holen
-            // WICHTIG: PDFs werden nur über die 'message'-Aktion gecacht
-            console.log('[SW] PDF nicht im Cache, hole vom Netzwerk...');
-            try {
-                return await fetch(noCorsRequest);
-            } catch (error) {
-                console.log('[Service Worker] Netzwerk-Fetch für PDF fehlgeschlagen, zeige Offline-Seite.');
-                return await caches.match('/vCard/offline.html');
-            }
-        })());
-        return;
-    }
-    
-    // Navigation-Requests
+    // Navigation Requests (HTML pages)
     if (request.mode === 'navigate') {
-        // HTML-Seiten aus assets/ (z.B. Datenschutzerklärung)
+        // HTML pages from assets/ (e.g., privacy policy)
         if (url.pathname.startsWith(`${REPO_PATH}assets/`) && url.pathname.endsWith('.html')) {
             event.respondWith((async () => {
                 const cache = await caches.open(CORE_CACHE_NAME);
@@ -316,6 +111,7 @@ self.addEventListener('fetch', (event) => {
             return;
         }
 
+        // Main navigation - always serve index.html
         event.respondWith((async () => {
             const indexRequest = new Request(`${REPO_PATH}index.html`);
             const cachedResponse = await caches.match(indexRequest);
@@ -347,7 +143,7 @@ self.addEventListener('fetch', (event) => {
                 }
 
                 return fetch(request).then(networkResponse => {
-                    // Cache nur erfolgreiche Responses
+                    // Cache only successful responses
                     if (networkResponse.ok) {
                         caches.open(CORE_CACHE_NAME).then(cache => {
                             cache.put(request, networkResponse.clone());
@@ -360,7 +156,7 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Alle anderen Assets: Stale-While-Revalidate
+    // All other assets: Stale-While-Revalidate
     event.respondWith(
         caches.match(request).then(cachedResponse => {
             const fetchPromise = fetch(request).then(networkResponse => {
@@ -376,263 +172,12 @@ self.addEventListener('fetch', (event) => {
     );
 });
 
-self.addEventListener('message', (event) => {
-    // PDFs werden über diese Nachricht in den Cache geschrieben
-    if (event.data && event.data.action === 'cache-doc') {
-        const tenant = event.data.tenant || 'default';
-        const docCacheName = `${DOC_CACHE_PREFIX}-${tenant}`;
+// ============================================================
+// Message Event - Handle skip waiting
+// ============================================================
 
-        event.waitUntil(
-            caches.open(docCacheName)
-                .then(cache => cache.add(new Request(event.data.url, { mode: 'no-cors' })))
-                .then(() => {
-                    console.log('[Service Worker] Document cached successfully:', event.data.url);
-                    // Notify all clients that the document was cached
-                    return self.clients.matchAll();
-                })
-                .then(clients => {
-                    clients.forEach(client => {
-                        client.postMessage({
-                            type: 'DOC_CACHED',
-                            url: event.data.url
-                        });
-                    });
-                })
-                .catch(err => console.error('[Service Worker] Failed to cache doc:', err))
-        );
-    } else if (event.data && event.data.type === 'SKIP_WAITING') {
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SKIP_WAITING') {
         self.skipWaiting();
     }
 });
-
-// Background Sync Event Handler
-self.addEventListener('sync', (event) => {
-    console.log('[Service Worker] Sync event received:', event.tag);
-
-    if (event.tag === 'sync-pending-downloads') {
-        event.waitUntil(syncPendingDownloads());
-    }
-});
-
-async function syncPendingDownloads() {
-    console.log('[Service Worker] 🔄 Starting background sync for pending downloads...');
-
-    try {
-        // ✅ DIREKTER ZUGRIFF AUF IndexedDB - keine Client-Abhängigkeit mehr!
-        const pendingDownloads = await getPendingDownloadsFromDB();
-
-        if (pendingDownloads.length === 0) {
-            console.log('[Service Worker] No pending downloads to sync');
-            return;
-        }
-
-        console.log(`[Service Worker] Found ${pendingDownloads.length} pending download(s) from IndexedDB`);
-
-        const tenant = 'default';
-        const docCacheName = `${DOC_CACHE_PREFIX}-${tenant}`;
-        const cache = await caches.open(docCacheName);
-
-        let successCount = 0;
-        let failedCount = 0;
-
-        for (const item of pendingDownloads) {
-            const url = item.url;
-            const retryCount = item.retryCount || 0;
-
-            try {
-                console.log(`[Service Worker] Attempting download (retry ${retryCount}/${MAX_RETRY_COUNT}):`, url);
-
-                const noCorsRequest = new Request(url, { mode: 'no-cors' });
-                await cache.add(noCorsRequest);
-                successCount++;
-
-                console.log(`[Service Worker] ✅ Successfully cached via Background Sync:`, url);
-
-                // ✅ Mark as completed with timestamp & source
-                await markDownloadComplete(url, 'background-sync');
-
-                // ✅ Show notification on success (silent if app is open)
-                try {
-                    await self.registration.showNotification('Dokument bereit', {
-                        body: 'Die Dokumentation wurde heruntergeladen und ist offline verfügbar',
-                        icon: '/vCard/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png',
-                        badge: '/vCard/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png',
-                        tag: 'doc-downloaded',
-                        requireInteraction: false,
-                        silent: true
-                    });
-                } catch (notifError) {
-                    console.log('[Service Worker] Notification permission not granted or failed:', notifError.message);
-                }
-
-                // Notify clients if available (optional, not required)
-                const clients = await self.clients.matchAll();
-                clients.forEach(client => {
-                    client.postMessage({
-                        type: 'DOC_SYNCED',
-                        url: url,
-                        source: 'background-sync'
-                    });
-                });
-            } catch (error) {
-                failedCount++;
-                console.error(`[Service Worker] ❌ Failed to cache during sync (attempt ${retryCount + 1}/${MAX_RETRY_COUNT}):`, url, error);
-
-                // ✅ Increment retry counter
-                await incrementRetryCount(url, error.message);
-
-                // Check if max retries exceeded
-                if (retryCount + 1 >= MAX_RETRY_COUNT) {
-                    console.error(`[Service Worker] 🚫 Max retries exceeded for:`, url);
-                    // Keep in DB but won't be retried (filtered by getPendingDownloadsFromDB)
-
-                    // Notify user of permanent failure
-                    try {
-                        await self.registration.showNotification('Download fehlgeschlagen', {
-                            body: 'Ein Dokument konnte nach mehreren Versuchen nicht heruntergeladen werden',
-                            icon: '/vCard/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png',
-                            tag: 'doc-failed',
-                            requireInteraction: true
-                        });
-                    } catch (notifError) {
-                        // Notification permission not granted
-                    }
-                }
-            }
-        }
-
-        console.log(`[Service Worker] 📊 Background sync completed: ${successCount} successful, ${failedCount} failed`);
-
-        // Notify clients that sync is complete
-        const clients = await self.clients.matchAll();
-        clients.forEach(client => {
-            client.postMessage({
-                type: 'SYNC_COMPLETE',
-                successCount: successCount,
-                failedCount: failedCount
-            });
-        });
-
-    } catch (error) {
-        console.error('[Service Worker] Background sync failed:', error);
-    }
-}
-
-// ============================================================
-// Background Fetch API - For reliable downloads when app is closed
-// ============================================================
-
-/**
- * Background Fetch: Initiated
- * Triggered when background fetch starts
- */
-self.addEventListener('backgroundfetchsuccess', async (event) => {
-    console.log('[Service Worker] 🎉 Background Fetch successful:', event.registration.id);
-
-    const registration = event.registration;
-
-    event.waitUntil((async () => {
-        try {
-            const records = await registration.matchAll();
-            const cache = await caches.open(`${DOC_CACHE_PREFIX}-default`);
-
-            for (const record of records) {
-                const response = await record.responseReady;
-                const url = record.request.url;
-
-                // Cache the response
-                await cache.put(record.request, response);
-                console.log('[Service Worker] ✅ Background Fetch cached:', url);
-
-                // Mark as completed
-                await markDownloadComplete(url, 'background-fetch');
-
-                // Show success notification
-                await self.registration.showNotification('Dokument bereit', {
-                    body: 'Die Dokumentation wurde heruntergeladen',
-                    icon: '/vCard/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png',
-                    tag: 'bg-fetch-success'
-                });
-
-                // Notify clients
-                const clients = await self.clients.matchAll();
-                clients.forEach(client => {
-                    client.postMessage({
-                        type: 'DOC_SYNCED',
-                        url: url,
-                        source: 'background-fetch'
-                    });
-                });
-            }
-        } catch (error) {
-            console.error('[Service Worker] Background Fetch processing failed:', error);
-        }
-    })());
-});
-
-/**
- * Background Fetch: Failed
- * Triggered when background fetch fails
- */
-self.addEventListener('backgroundfetchfail', async (event) => {
-    console.error('[Service Worker] ❌ Background Fetch failed:', event.registration.id);
-
-    event.waitUntil((async () => {
-        try {
-            const records = await event.registration.matchAll();
-
-            for (const record of records) {
-                const url = record.request.url;
-
-                // Increment retry counter
-                await incrementRetryCount(url, 'Background Fetch failed');
-
-                console.error('[Service Worker] Background Fetch failed for:', url);
-            }
-
-            // Show failure notification
-            await self.registration.showNotification('Download fehlgeschlagen', {
-                body: 'Dokument konnte nicht heruntergeladen werden',
-                icon: '/vCard/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png',
-                tag: 'bg-fetch-fail',
-                requireInteraction: true
-            });
-        } catch (error) {
-            console.error('[Service Worker] Background Fetch failure handling failed:', error);
-        }
-    })());
-});
-
-/**
- * Background Fetch: Click
- * Triggered when user clicks on the background fetch notification
- */
-self.addEventListener('backgroundfetchclick', (event) => {
-    console.log('[Service Worker] Background Fetch notification clicked:', event.registration.id);
-
-    event.waitUntil((async () => {
-        // Open the app when notification is clicked
-        const clients = await self.clients.matchAll({ type: 'window' });
-
-        if (clients.length > 0) {
-            // Focus existing window
-            clients[0].focus();
-        } else {
-            // Open new window
-            self.clients.openWindow('/vCard/');
-        }
-    })());
-});
-
-
-
-
-
-
-
-
-
-
-
-
-
