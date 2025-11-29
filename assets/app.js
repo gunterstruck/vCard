@@ -499,18 +499,116 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- NFC Logic ---
+    /**
+     * Starts NFC scanning for reading vCard data from tags
+     */
+    async function startScanning() {
+        try {
+            const ndef = new NDEFReader();
+
+            // Start scanning
+            await ndef.scan({ signal: appState.abortController.signal });
+            setNfcBadge('scanning');
+            showMessage(t('messages.scanToReadInfo'), 'info');
+            addLogEntry('NFC Scanning started', 'info');
+
+            // Handle reading events
+            ndef.onreading = (event) => {
+                try {
+                    const message = event.message;
+                    let vcardData = null;
+
+                    // Iterate through all records to find vCard
+                    for (const record of message.records) {
+                        if (record.mediaType === "text/vcard") {
+                            // Decode vCard data
+                            const decoder = new TextDecoder();
+                            const vcardString = decoder.decode(record.data);
+
+                            // Parse vCard
+                            vcardData = parseVCard(vcardString);
+
+                            // Store in app state
+                            appState.scannedDataObject = vcardData;
+
+                            // Display parsed data
+                            displayParsedData(vcardData);
+
+                            // Show raw data
+                            if (rawDataOutput) {
+                                rawDataOutput.value = vcardString;
+                            }
+
+                            // Show action buttons
+                            if (readActions) {
+                                readActions.classList.remove('hidden');
+                            }
+
+                            // Expand read result container
+                            if (readResultContainer) {
+                                readResultContainer.classList.remove('expanded');
+                                autoExpandToFitScreen(readResultContainer);
+                            }
+
+                            // Visual feedback
+                            if ('vibrate' in navigator) {
+                                navigator.vibrate(200);
+                            }
+                            setNfcBadge('success', t('status.success'));
+                            showMessage(t('messages.readSuccess') || 'vCard erfolgreich gelesen!', 'ok');
+                            addLogEntry('vCard successfully read from NFC tag', 'ok');
+
+                            // Reset to scanning state after success
+                            setTimeout(() => {
+                                if (!appState.abortController?.signal.aborted) {
+                                    setNfcBadge('scanning');
+                                }
+                            }, 2000);
+
+                            break;
+                        }
+                    }
+
+                    // If no vCard found
+                    if (!vcardData) {
+                        showMessage(t('errors.noVcardFound') || 'Kein vCard-Datensatz auf dem Tag gefunden', 'err');
+                        addLogEntry('No vCard data found on NFC tag', 'err');
+                    }
+                } catch (readError) {
+                    ErrorHandler.handle(readError, 'NFCRead');
+                }
+            };
+
+            // Handle reading errors
+            ndef.onreadingerror = (event) => {
+                const error = new Error('Error reading NFC tag');
+                ErrorHandler.handle(error, 'NFCReadError');
+            };
+
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                ErrorHandler.handle(error, 'NFCScan');
+            }
+            abortNfcAction();
+            startCooldown();
+        }
+    }
+
     async function handleNfcAction() {
         if (appState.isNfcActionActive || appState.isCooldownActive) return;
         const writeTab = document.getElementById('write-tab');
         const isWriteMode = writeTab?.classList.contains('active') || false;
 
+        appState.isNfcActionActive = true;
+        appState.abortController = new AbortController();
+
+        // Read Mode
         if (!isWriteMode) {
-            showMessage(t('messages.scanToReadInfo'), 'info');
+            await startScanning();
             return;
         }
 
-        appState.isNfcActionActive = true;
-        appState.abortController = new AbortController();
+        // Write Mode
         appState.nfcTimeoutId = setTimeout(() => {
             if (appState.abortController && !appState.abortController.signal.aborted) {
                 appState.abortController.abort(new DOMException('NFC Operation Timed Out', 'TimeoutError'));
