@@ -61,7 +61,8 @@
         "cacheClearing": "Clearing cache...",
         "cacheClearSuccess": "Cache cleared successfully! The page will reload.",
         "cacheClearConfirm": "Do you really want to delete all cached data?",
-        "installSuccess": "App installed successfully!"
+        "installSuccess": "App installed successfully!",
+        "installAccepted": "Preparing installation..."
     },
     "errors": {
         "NotAllowedError": "Permission for NFC was denied.",
@@ -80,5 +81,6 @@
     },
     "themeDark": "Dark Theme",
     "themeLight": "Light Theme",
-    "themeCustomer": "Customer Theme"
+    "themeCustomer": "Customer Theme",
+    "installApp": "Install App"
 }
