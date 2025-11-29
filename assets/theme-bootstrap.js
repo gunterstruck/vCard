@@ -39,7 +39,7 @@
           secondary: '#3d3d3d'
         }
       },
-      'othimm': {
+      'vcard': {
         theme: 'customer-brand',
         brandColors: {
           primary: '#d54b2a',
@@ -49,7 +49,7 @@
     };
 
     // --- 3️⃣ config.json synchron laden
-    let selectedDesign = designs['othimm']; // Fallback für O.Thimm
+    let selectedDesign = designs['vcard']; // Fallback für vCard
 
     const request = new XMLHttpRequest();
     request.open('GET', SCOPE + 'config.json', false); // synchron
