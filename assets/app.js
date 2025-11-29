@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Design Templates ---
     const designs = {
-        'thixx_standard': { appName: "vCard NFC Writer", short_name: "vCard", theme: "dark", lockTheme: false, icons: { icon192: "/VCard/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png", icon512: "/VCard/assets/THiXX_Icon_Grau6C6B66_Transparent_512x512.png" }, brandColors: { primary: "#f04e37", secondary: "#6c6b66" } },
+        'vcard_standard': { appName: "vCard NFC Writer", short_name: "vCard", theme: "dark", lockTheme: false, icons: { icon192: "/VCard/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png", icon512: "/VCard/assets/THiXX_Icon_Grau6C6B66_Transparent_512x512.png" }, brandColors: { primary: "#f04e37", secondary: "#6c6b66" } },
         'peterpohl': { appName: "vCard NFC Writer", short_name: "vCard", theme: "customer-brand", lockTheme: false, icons: { icon192: "/VCard/assets/PP-192x192.png", icon512: "/VCard/assets/PP-512x512.png" }, brandColors: { primary: "#00457D", secondary: "#FFEC00" } },
         'sigx': { appName: "vCard NFC Writer", short_name: "vCard", theme: "customer-brand", lockTheme: false, icons: { icon192: "/VCard/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png", icon512: "/VCard/assets/THiXX_Icon_Grau6C6B66_Transparent_512x512.png" }, brandColors: { primary: "#5865F2", secondary: "#3d3d3d" } },
         'vcard': { appName: "vCard NFC Writer", short_name: "vCard", theme: "customer-brand", lockTheme: false, icons: { icon192: "/VCard/assets/icon-192.png", icon512: "/VCard/assets/icon-512.png" }, brandColors: { primary: "#d54b2a", secondary: "#6C6B66" } }
@@ -445,7 +445,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function applyConfig(config) {
-        const selectedDesign = designs[config.design] || designs['thixx_standard'];
+        const selectedDesign = designs[config.design] || designs['vcard_standard'];
 
         if (!isIOS()) {
             updateManifest(selectedDesign);
@@ -620,7 +620,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- UI/UX Functions ---
     function updateManifest(design) { const manifestLink = document.querySelector('link[rel="manifest"]'); if (!manifestLink) return; const oldHref = manifestLink.href; if (oldHref && oldHref.startsWith('blob:')) { URL.revokeObjectURL(oldHref); } const newManifest = { name: design.appName, short_name: design.short_name, start_url: "/VCard/index.html", scope: "/VCard/", display: "standalone", background_color: "#ffffff", theme_color: design.brandColors.primary || "#f04e37", orientation: "portrait-primary", icons: [{ src: design.icons.icon192, sizes: "192x192", type: "image/png" }, { src: design.icons.icon512, sizes: "512x512", type: "image/png" }] }; const blob = new Blob([JSON.stringify(newManifest)], { type: 'application/json' }); manifestLink.href = URL.createObjectURL(blob); }
-    function applyTheme(themeName) { const themeButtons = document.querySelectorAll('.theme-btn'); document.documentElement.setAttribute('data-theme', themeName); localStorage.setItem('thixx-theme', themeName); themeButtons.forEach(btn => { btn.classList.toggle('active', btn.dataset.theme === themeName); }); const metaThemeColor = document.querySelector('meta[name="theme-color"]'); if (metaThemeColor) { const colors = { dark: '#0f172a', thixx: '#f8f9fa', 'customer-brand': '#FCFCFD' }; metaThemeColor.setAttribute('content', colors[themeName] || '#FCFCFD'); } }
+    function applyTheme(themeName) { const themeButtons = document.querySelectorAll('.theme-btn'); document.documentElement.setAttribute('data-theme', themeName); localStorage.setItem('vcard-theme', themeName); themeButtons.forEach(btn => { btn.classList.toggle('active', btn.dataset.theme === themeName); }); const metaThemeColor = document.querySelector('meta[name="theme-color"]'); if (metaThemeColor) { const colors = { dark: '#0f172a', light: '#f8f9fa', 'customer-brand': '#FCFCFD' }; metaThemeColor.setAttribute('content', colors[themeName] || '#FCFCFD'); } }
     function setupReadTabInitialState() { contactCard.innerHTML = ''; const p = document.createElement('p'); p.className = 'placeholder-text'; p.textContent = t('placeholderRead'); contactCard.appendChild(p); if(readActions) readActions.classList.add('hidden'); }
     function initCollapsibles() { document.querySelectorAll('.collapsible').forEach(el => makeCollapsible(el)) }
 

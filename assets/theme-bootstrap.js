@@ -14,11 +14,11 @@
 
 
     // --- 1️⃣ Alte lokale Themes entfernen
-    localStorage.removeItem('thixx-theme');
+    localStorage.removeItem('vcard-theme');
 
     // --- 2️⃣ Design-Definitionen (identisch zu app.js)
     const designs = {
-      'thixx_standard': {
+      'vcard_standard': {
         theme: 'customer-brand',
         brandColors: {
           primary: '#d54b2a',
