@@ -10,7 +10,7 @@
 
 
     // --- 0️⃣ SCOPE DEFINITION (WICHTIG: Muss mit index.html übereinstimmen!)
-    const SCOPE = '/THiXX-OTH/'; // ← O.Thimm Branding Deployment
+    const SCOPE = '/VCard/'; // ← vCard Branding Deployment
 
 
     // --- 1️⃣ Alte lokale Themes entfernen

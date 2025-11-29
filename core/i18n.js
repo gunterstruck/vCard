@@ -7,7 +7,7 @@
     'use strict';
 
     // HINZUGEFÜGT: Der Pfad zu Ihrem Repository
-    const REPO_PATH = '/THiXX-I/';
+    const REPO_PATH = '/VCard/';
 
     const i18n = {
         translations: {},

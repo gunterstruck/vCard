@@ -1,21 +1,21 @@
 {
   "name": "vCard",
   "short_name": "vCard",
-  "start_url": "/THiXX-OTH/index.html",
-  "scope": "/THiXX-OTH/",
+  "start_url": "/VCard/index.html",
+  "scope": "/VCard/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#d54b2a",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/THiXX-OTH/assets/icon-192.png",
+      "src": "/VCard/assets/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/THiXX-OTH/assets/icon-512.png",
+      "src": "/VCard/assets/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
