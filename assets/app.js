@@ -178,7 +178,13 @@ document.addEventListener('DOMContentLoaded', () => {
         checkNfcSupport();
         initCollapsibles();
 
-        setupReadTabInitialState();
+        // Check if contact data was passed via URL parameter (Link-Tree workflow)
+        checkUrlParametersAndDisplay();
+
+        // Only setup initial state if no URL data was loaded
+        if (!appState.scannedDataObject) {
+            setupReadTabInitialState();
+        }
         switchTab('read-tab');
         if (readResultContainer) {
             autoExpandToFitScreen(readResultContainer);
@@ -426,6 +432,151 @@ document.addEventListener('DOMContentLoaded', () => {
         return data;
     }
 
+    // --- URL-Based Contact Data Encoding/Decoding ---
+    /**
+     * Encodes contact data into a compact URL parameter
+     * Uses short keys to minimize URL length for NFC chip capacity
+     * @param {Object} data - Contact data object
+     * @returns {string} Base64-encoded JSON string
+     */
+    function encodeContactDataToUrl(data) {
+        // Map full field names to short keys (1-2 chars) to save space
+        const shortKeys = {
+            fn: 'n',      // First name
+            ln: 'l',      // Last name
+            org: 'o',     // Organization
+            title: 't',   // Title
+            tel: 'p',     // Phone (mobile)
+            telWork: 'w', // Work phone
+            email: 'e',   // Email
+            url: 'u',     // URL
+            street: 's',  // Street
+            city: 'c',    // City
+            zip: 'z',     // ZIP
+            country: 'k'  // Country (k for Kontry to avoid confusion)
+        };
+
+        // Create compact object with only filled fields
+        const compactData = {};
+        for (const [fullKey, value] of Object.entries(data)) {
+            if (value && String(value).trim()) {
+                const shortKey = shortKeys[fullKey] || fullKey;
+                compactData[shortKey] = String(value).trim();
+            }
+        }
+
+        // Convert to JSON and encode to Base64
+        const json = JSON.stringify(compactData);
+        const base64 = btoa(unescape(encodeURIComponent(json))); // UTF-8 safe encoding
+        return base64;
+    }
+
+    /**
+     * Decodes contact data from URL parameter
+     * Converts short keys back to full field names
+     * @param {string} encodedData - Base64-encoded data string
+     * @returns {Object} Contact data object with full field names
+     */
+    function decodeContactDataFromUrl(encodedData) {
+        try {
+            // Decode Base64 to JSON
+            const json = decodeURIComponent(escape(atob(encodedData))); // UTF-8 safe decoding
+            const compactData = JSON.parse(json);
+
+            // Map short keys back to full field names
+            const fullKeys = {
+                n: 'fn',      // First name
+                l: 'ln',      // Last name
+                o: 'org',     // Organization
+                t: 'title',   // Title
+                p: 'tel',     // Phone (mobile)
+                w: 'telWork', // Work phone
+                e: 'email',   // Email
+                u: 'url',     // URL
+                s: 'street',  // Street
+                c: 'city',    // City
+                z: 'zip',     // ZIP
+                k: 'country'  // Country
+            };
+
+            const data = {};
+            for (const [shortKey, value] of Object.entries(compactData)) {
+                const fullKey = fullKeys[shortKey] || shortKey;
+                data[fullKey] = value;
+            }
+
+            return data;
+        } catch (error) {
+            console.error('[URL Decode] Failed to decode contact data:', error);
+            throw new Error(t('errors.invalidUrlData') || 'Ungültige URL-Daten');
+        }
+    }
+
+    /**
+     * Generates complete URL with contact data for NFC chip
+     * @param {Object} data - Contact data object
+     * @returns {string} Complete URL with encoded data parameter
+     */
+    function generateContactUrl(data) {
+        const encodedData = encodeContactDataToUrl(data);
+        const baseUrl = window.location.origin + window.location.pathname;
+        return `${baseUrl}?d=${encodedData}`;
+    }
+
+    /**
+     * Checks URL parameters for contact data and displays it
+     * Called on app initialization to handle "Link-Tree" workflow
+     * where contact data is passed via URL when NFC chip is scanned
+     */
+    function checkUrlParametersAndDisplay() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const encodedData = urlParams.get('d');
+
+        if (!encodedData) {
+            // No URL data parameter, normal app mode
+            return;
+        }
+
+        try {
+            // Decode contact data from URL
+            const contactData = decodeContactDataFromUrl(encodedData);
+            console.log('[URL Read] Decoded contact data from URL:', contactData);
+
+            // Store in app state
+            appState.scannedDataObject = contactData;
+
+            // Display contact card
+            displayParsedData(contactData);
+
+            // Show action buttons (Save as Contact)
+            if (readActions) {
+                readActions.classList.remove('hidden');
+            }
+
+            // Show raw data in debug section
+            if (rawDataOutput) {
+                const vcardString = createVCardString(contactData);
+                rawDataOutput.value = vcardString;
+            }
+
+            // Switch to Read tab to show the contact
+            switchTab('read-tab');
+
+            // Show success message
+            showMessage(t('messages.urlDataLoaded') || 'Kontaktdaten aus Link geladen', 'ok');
+            addLogEntry('Kontaktdaten aus URL-Parameter geladen', 'info');
+
+            // Clean URL (optional - removes the ?d=... parameter for cleaner appearance)
+            // Uncomment the next line if you want to clean the URL after loading
+            // window.history.replaceState({}, document.title, window.location.pathname);
+
+        } catch (error) {
+            console.error('[URL Read] Error decoding URL parameters:', error);
+            showMessage(t('errors.invalidUrlData') || 'Fehler beim Laden der Kontaktdaten aus dem Link', 'err');
+            addLogEntry('Fehler beim Dekodieren der URL-Parameter', 'err');
+        }
+    }
+
     // --- UI & Display Logic ---
     function createDataPair(label, value) {
         if (value === undefined || value === null || String(value).trim() === '') return null;
@@ -624,19 +775,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
             setNfcBadge('writing');
             const formData = getFormData();
-            const vcardString = createVCardString(formData);
 
-            // Create NDEF message with vCard MIME type
-            const encoder = new TextEncoder();
-            const vcardBytes = encoder.encode(vcardString);
+            // Generate URL with contact data for Link-Tree style workflow
+            const contactUrl = generateContactUrl(formData);
 
+            // Create NDEF message with URL record (auto-opens browser on scan)
             const message = {
                 records: [{
-                    recordType: "mime",
-                    mediaType: "text/vcard",
-                    data: vcardBytes
+                    recordType: "url",
+                    data: contactUrl
                 }]
             };
+
+            // Log URL size for debugging
+            console.log('[NFC Write] Generated URL:', contactUrl);
+            console.log('[NFC Write] URL length:', contactUrl.length, 'bytes');
+            addLogEntry(`URL-Länge: ${contactUrl.length} Bytes`, 'info');
 
             await writeWithRetries(ndef, message);
         } catch (error) {
@@ -700,14 +854,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const formData = getFormData();
-        const vcardString = createVCardString(formData);
-        payloadOutput.value = vcardString;
 
-        const byteCount = new TextEncoder().encode(vcardString).length;
-        payloadSize.textContent = `${byteCount} / ${CONFIG.MAX_PAYLOAD_SIZE} Bytes`;
-        const isOverLimit = byteCount > CONFIG.MAX_PAYLOAD_SIZE;
+        // Generate URL for NFC chip (Link-Tree workflow)
+        const contactUrl = generateContactUrl(formData);
+
+        // Show both vCard (for reference) and URL in payload output
+        const vcardString = createVCardString(formData);
+        payloadOutput.value = `URL (wird auf Chip geschrieben):\n${contactUrl}\n\n--- vCard (Referenz) ---\n${vcardString}`;
+
+        // Calculate URL size (this is what actually gets written to the chip)
+        const urlByteCount = new TextEncoder().encode(contactUrl).length;
+        const vcardByteCount = new TextEncoder().encode(vcardString).length;
+
+        // NTAG215 has 504 bytes usable capacity, NTAG216 has 888 bytes
+        const NTAG215_CAPACITY = 504;
+        payloadSize.textContent = `URL: ${urlByteCount} Bytes | vCard: ${vcardByteCount} Bytes | Empfohlen: NTAG215 (504B) oder NTAG216 (888B)`;
+
+        // Warn if URL exceeds NTAG215 capacity
+        const isOverLimit = urlByteCount > NTAG215_CAPACITY;
         payloadSize.classList.toggle('limit-exceeded', isOverLimit);
         nfcStatusBadge.disabled = isOverLimit;
+
+        if (isOverLimit) {
+            payloadSize.title = `Warnung: URL ist zu lang für NTAG215. Bitte NTAG216 verwenden oder Daten kürzen.`;
+        } else {
+            payloadSize.title = '';
+        }
     }
 
     function validateForm() {
@@ -738,11 +910,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Check payload size
-        const vcardString = createVCardString(formData);
-        const payloadByteSize = new TextEncoder().encode(vcardString).length;
-        if (payloadByteSize > CONFIG.MAX_PAYLOAD_SIZE) {
-            errors.push(t('messages.payloadTooLarge'));
+        // Check URL payload size (for Link-Tree workflow)
+        const contactUrl = generateContactUrl(formData);
+        const urlByteSize = new TextEncoder().encode(contactUrl).length;
+        const NTAG215_CAPACITY = 504;
+
+        if (urlByteSize > NTAG215_CAPACITY) {
+            errors.push(`URL zu lang (${urlByteSize} Bytes). Max. 504 Bytes für NTAG215. Bitte Daten kürzen oder NTAG216 verwenden.`);
         }
 
         return errors;
