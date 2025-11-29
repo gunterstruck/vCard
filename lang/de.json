@@ -60,7 +60,8 @@
         "noUpdateFound": "Kein neues Update gefunden.",
         "cacheClearing": "Cache wird gelöscht...",
         "cacheClearSuccess": "Cache erfolgreich gelöscht! Die Seite wird neu geladen.",
-        "cacheClearConfirm": "Möchten Sie wirklich alle zwischengespeicherten Daten löschen?"
+        "cacheClearConfirm": "Möchten Sie wirklich alle zwischengespeicherten Daten löschen?",
+        "installSuccess": "App erfolgreich installiert!"
     },
     "errors": {
         "NotAllowedError": "Die Berechtigung für NFC wurde verweigert.",

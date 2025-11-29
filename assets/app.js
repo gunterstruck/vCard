@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
         eventLog: [],
         nfcTimeoutId: null,
         gracePeriodTimeoutId: null,
+        deferredPrompt: null,
     };
 
     // --- Design Templates ---
@@ -143,6 +144,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
         }
+
+        // Handle PWA installation prompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('[App] beforeinstallprompt event fired');
+            // Prevent the mini-infobar from appearing on mobile
+            e.preventDefault();
+            // Store the event so it can be triggered later
+            appState.deferredPrompt = e;
+            // Show install prompt automatically
+            showInstallPrompt();
+        });
+
+        // Handle successful installation
+        window.addEventListener('appinstalled', () => {
+            console.log('[App] PWA was installed');
+            appState.deferredPrompt = null;
+            showMessage(t('messages.installSuccess') || 'App erfolgreich installiert!', 'ok');
+        });
 
         await loadTranslations();
         applyTranslations();
@@ -974,5 +993,34 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.removeChild(a);
         setTimeout(() => { URL.revokeObjectURL(url); }, CONFIG.URL_REVOKE_DELAY);
         showMessage(t('messages.saveSuccess'), 'ok');
+    }
+
+    /**
+     * Shows the PWA installation prompt
+     */
+    async function showInstallPrompt() {
+        if (!appState.deferredPrompt) {
+            console.log('[App] Install prompt not available');
+            return;
+        }
+
+        try {
+            // Show the install prompt
+            appState.deferredPrompt.prompt();
+
+            // Wait for the user to respond to the prompt
+            const choiceResult = await appState.deferredPrompt.userChoice;
+
+            if (choiceResult.outcome === 'accepted') {
+                console.log('[App] User accepted the install prompt');
+            } else {
+                console.log('[App] User dismissed the install prompt');
+            }
+
+            // Clear the deferredPrompt since it can only be used once
+            appState.deferredPrompt = null;
+        } catch (error) {
+            console.error('[App] Error showing install prompt:', error);
+        }
     }
 });

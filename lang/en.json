@@ -60,7 +60,8 @@
         "noUpdateFound": "No new update found.",
         "cacheClearing": "Clearing cache...",
         "cacheClearSuccess": "Cache cleared successfully! The page will reload.",
-        "cacheClearConfirm": "Do you really want to delete all cached data?"
+        "cacheClearConfirm": "Do you really want to delete all cached data?",
+        "installSuccess": "App installed successfully!"
     },
     "errors": {
         "NotAllowedError": "Permission for NFC was denied.",

@@ -60,7 +60,8 @@
         "noUpdateFound": "No se encontró ninguna actualización nueva.",
         "cacheClearing": "Borrando caché...",
         "cacheClearSuccess": "¡Caché borrado con éxito! La página se recargará.",
-        "cacheClearConfirm": "¿Realmente desea eliminar todos los datos en caché?"
+        "cacheClearConfirm": "¿Realmente desea eliminar todos los datos en caché?",
+        "installSuccess": "¡Aplicación instalada con éxito!"
     },
     "errors": {
         "NotAllowedError": "Se denegó el permiso para NFC.",
