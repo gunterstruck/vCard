@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'thixx_standard': { appName: "vCard NFC Writer", short_name: "vCard", theme: "dark", lockTheme: false, icons: { icon192: "/THiXX-OTH/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png", icon512: "/THiXX-OTH/assets/THiXX_Icon_Grau6C6B66_Transparent_512x512.png" }, brandColors: { primary: "#f04e37", secondary: "#6c6b66" } },
         'peterpohl': { appName: "vCard NFC Writer", short_name: "vCard", theme: "customer-brand", lockTheme: false, icons: { icon192: "/THiXX-OTH/assets/PP-192x192.png", icon512: "/THiXX-OTH/assets/PP-512x512.png" }, brandColors: { primary: "#00457D", secondary: "#FFEC00" } },
         'sigx': { appName: "vCard NFC Writer", short_name: "vCard", theme: "customer-brand", lockTheme: false, icons: { icon192: "/THiXX-OTH/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png", icon512: "/THiXX-OTH/assets/THiXX_Icon_Grau6C6B66_Transparent_512x512.png" }, brandColors: { primary: "#5865F2", secondary: "#3d3d3d" } },
-        'othimm': { appName: "vCard NFC Writer", short_name: "vCard", theme: "customer-brand", lockTheme: false, icons: { icon192: "/THiXX-OTH/assets/icon-192.png", icon512: "/THiXX-OTH/assets/icon-512.png" }, brandColors: { primary: "#d54b2a", secondary: "#6C6B66" } }
+        'vcard': { appName: "vCard NFC Writer", short_name: "vCard", theme: "customer-brand", lockTheme: false, icons: { icon192: "/THiXX-OTH/assets/icon-192.png", icon512: "/THiXX-OTH/assets/icon-512.png" }, brandColors: { primary: "#d54b2a", secondary: "#6C6B66" } }
     };
 
     // --- DOM Element References ---

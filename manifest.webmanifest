@@ -1,6 +1,6 @@
 {
-  "name": "O.Thimm NFC Tool",
-  "short_name": "O.Thimm",
+  "name": "vCard",
+  "short_name": "vCard",
   "start_url": "/THiXX-OTH/index.html",
   "scope": "/THiXX-OTH/",
   "display": "standalone",
