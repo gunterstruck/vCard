@@ -60,7 +60,8 @@
         "noUpdateFound": "Aucune nouvelle mise à jour trouvée.",
         "cacheClearing": "Vidage du cache...",
         "cacheClearSuccess": "Cache vidé avec succès! La page va se recharger.",
-        "cacheClearConfirm": "Voulez-vous vraiment supprimer toutes les données en cache?"
+        "cacheClearConfirm": "Voulez-vous vraiment supprimer toutes les données en cache?",
+        "installSuccess": "Application installée avec succès!"
     },
     "errors": {
         "NotAllowedError": "La permission NFC a été refusée.",
