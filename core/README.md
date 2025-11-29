@@ -4,7 +4,7 @@
 
 ## Removed Files (2025-01-14)
 
-The following files were removed as they were duplicates from the THiXX-I project and not used in THiXX-OTH:
+The following files were removed as they were duplicates from the THiXX-I project and not used in vCard:
 
 - ~~`app.js`~~ - Duplicate of `/assets/app.js`
 - ~~`theme-bootstrap.js`~~ - Duplicate of `/assets/theme-bootstrap.js`
@@ -18,10 +18,10 @@ The following files were removed as they were duplicates from the THiXX-I projec
 
 ## Active Project Structure
 
-THiXX-OTH uses the following structure:
+vCard uses the following structure:
 
 ```
-/THiXX-OTH/
+/VCard/
 ├── assets/
 │   ├── app.js ← Active application code
 │   ├── theme-bootstrap.js ← Active theme initialization

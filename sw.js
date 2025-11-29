@@ -7,8 +7,8 @@
  * - Dokumente: Tenant-spezifisch
  */
 
-// REPO_PATH definiert für THiXX-OTH Projekt
-const REPO_PATH = '/THiXX-OTH/';
+// REPO_PATH definiert für vCard Projekt
+const REPO_PATH = '/VCard/';
 // Cache-Version - erhöht nach Reliability-Update (Background Fetch, Retry, Notifications)
 const CORE_CACHE_NAME = 'thixx-oth-core-v01';
 const DOC_CACHE_PREFIX = 'thixx-oth-docs';
@@ -21,19 +21,19 @@ const MAX_RETRY_COUNT = 3; // Maximale Anzahl von Wiederholungsversuchen
 
 // Core Assets für Offline-Verfügbarkeit
 const CORE_ASSETS = [
-    '/THiXX-OTH/offline.html',
-    '/THiXX-OTH/index.html',
-    '/THiXX-OTH/style.css',
-    '/THiXX-OTH/assets/style.css',
-    '/THiXX-OTH/assets/offline.css',
-    '/THiXX-OTH/assets/datenschutz.css',
-    '/THiXX-OTH/assets/app.js',
-    '/THiXX-OTH/assets/theme-bootstrap.js',
-    '/THiXX-OTH/assets/datenschutz.html',
-    '/THiXX-OTH/lang/de.json',
-    '/THiXX-OTH/lang/en.json',
-    '/THiXX-OTH/lang/es.json',
-    '/THiXX-OTH/lang/fr.json'
+    '/VCard/offline.html',
+    '/VCard/index.html',
+    '/VCard/style.css',
+    '/VCard/assets/style.css',
+    '/VCard/assets/offline.css',
+    '/VCard/assets/datenschutz.css',
+    '/VCard/assets/app.js',
+    '/VCard/assets/theme-bootstrap.js',
+    '/VCard/assets/datenschutz.html',
+    '/VCard/lang/de.json',
+    '/VCard/lang/en.json',
+    '/VCard/lang/es.json',
+    '/VCard/lang/fr.json'
 ];
 
 // ============================================================
@@ -286,7 +286,7 @@ self.addEventListener('fetch', (event) => {
                 return await fetch(noCorsRequest);
             } catch (error) {
                 console.log('[Service Worker] Netzwerk-Fetch für PDF fehlgeschlagen, zeige Offline-Seite.');
-                return await caches.match('/THiXX-OTH/offline.html');
+                return await caches.match('/VCard/offline.html');
             }
         })());
         return;
@@ -310,7 +310,7 @@ self.addEventListener('fetch', (event) => {
                     }
 
                     console.log('[Service Worker] Navigate fetch failed for legal page, falling back to offline page.');
-                    return await caches.match('/THiXX-OTH/offline.html');
+                    return await caches.match('/VCard/offline.html');
                 }
             })());
             return;
@@ -332,14 +332,14 @@ self.addEventListener('fetch', (event) => {
                 return networkResponse;
             } catch (error) {
                 console.log('[Service Worker] Navigate fetch failed, falling back to offline page.');
-                return await caches.match('/THiXX-OTH/offline.html');
+                return await caches.match('/VCard/offline.html');
             }
         })());
         return;
     }
 
     // Assets - Cache on Demand
-    if (url.pathname.startsWith('/THiXX-OTH/assets/')) {
+    if (url.pathname.startsWith('/VCard/assets/')) {
         event.respondWith(
             caches.match(request).then(cachedResponse => {
                 if (cachedResponse) {
@@ -455,8 +455,8 @@ async function syncPendingDownloads() {
                 try {
                     await self.registration.showNotification('Dokument bereit', {
                         body: 'Die Dokumentation wurde heruntergeladen und ist offline verfügbar',
-                        icon: '/THiXX-OTH/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png',
-                        badge: '/THiXX-OTH/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png',
+                        icon: '/VCard/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png',
+                        badge: '/VCard/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png',
                         tag: 'doc-downloaded',
                         requireInteraction: false,
                         silent: true
@@ -490,7 +490,7 @@ async function syncPendingDownloads() {
                     try {
                         await self.registration.showNotification('Download fehlgeschlagen', {
                             body: 'Ein Dokument konnte nach mehreren Versuchen nicht heruntergeladen werden',
-                            icon: '/THiXX-OTH/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png',
+                            icon: '/VCard/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png',
                             tag: 'doc-failed',
                             requireInteraction: true
                         });
@@ -550,7 +550,7 @@ self.addEventListener('backgroundfetchsuccess', async (event) => {
                 // Show success notification
                 await self.registration.showNotification('Dokument bereit', {
                     body: 'Die Dokumentation wurde heruntergeladen',
-                    icon: '/THiXX-OTH/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png',
+                    icon: '/VCard/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png',
                     tag: 'bg-fetch-success'
                 });
 
@@ -593,7 +593,7 @@ self.addEventListener('backgroundfetchfail', async (event) => {
             // Show failure notification
             await self.registration.showNotification('Download fehlgeschlagen', {
                 body: 'Dokument konnte nicht heruntergeladen werden',
-                icon: '/THiXX-OTH/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png',
+                icon: '/VCard/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png',
                 tag: 'bg-fetch-fail',
                 requireInteraction: true
             });
@@ -619,7 +619,7 @@ self.addEventListener('backgroundfetchclick', (event) => {
             clients[0].focus();
         } else {
             // Open new window
-            self.clients.openWindow('/THiXX-OTH/');
+            self.clients.openWindow('/VCard/');
         }
     })());
 });
