@@ -9,12 +9,12 @@
 
 // REPO_PATH definiert für vCard Projekt
 const REPO_PATH = '/VCard/';
-// Cache-Version - erhöht nach Reliability-Update (Background Fetch, Retry, Notifications)
-const CORE_CACHE_NAME = 'thixx-oth-core-v02';
-const DOC_CACHE_PREFIX = 'thixx-oth-docs';
+// Cache-Version - Reset to v01 due to namespace change (thixx-oth → vcard)
+const CORE_CACHE_NAME = 'vcard-core-v01';
+const DOC_CACHE_PREFIX = 'vcard-docs';
 
 // IndexedDB Configuration
-const DB_NAME = 'thixx-oth-db';
+const DB_NAME = 'vcard-db';
 const DB_VERSION = 2; // ✅ UPGRADED: Erweiterte Felder für Retry & Logging
 const STORE_NAME = 'pending-downloads';
 const MAX_RETRY_COUNT = 3; // Maximale Anzahl von Wiederholungsversuchen
