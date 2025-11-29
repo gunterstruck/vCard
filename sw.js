@@ -10,7 +10,7 @@
 // REPO_PATH definiert für vCard Projekt
 const REPO_PATH = '/VCard/';
 // Cache-Version - erhöht nach Reliability-Update (Background Fetch, Retry, Notifications)
-const CORE_CACHE_NAME = 'thixx-oth-core-v01';
+const CORE_CACHE_NAME = 'thixx-oth-core-v02';
 const DOC_CACHE_PREFIX = 'thixx-oth-docs';
 
 // IndexedDB Configuration
@@ -623,6 +623,7 @@ self.addEventListener('backgroundfetchclick', (event) => {
         }
     })());
 });
+
 
 
 
