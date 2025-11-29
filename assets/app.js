@@ -62,6 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const reloadButton = document.getElementById('reload-button');
     const checkForUpdateBtn = document.getElementById('check-for-update-btn');
     const clearCacheBtn = document.getElementById('clear-cache-btn');
+    const installBtn = document.getElementById('install-btn');
 
     // --- Utility Functions ---
     const debounce = (func, wait) => { let timeout; return function executedFunction(...args) { const later = () => { clearTimeout(timeout); func.apply(this, args); }; clearTimeout(timeout); timeout = setTimeout(later, wait); }; };
@@ -152,14 +153,20 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             // Store the event so it can be triggered later
             appState.deferredPrompt = e;
-            // Show install prompt automatically
-            showInstallPrompt();
+            // Show install button
+            if (installBtn) {
+                installBtn.classList.remove('hidden');
+            }
         });
 
         // Handle successful installation
         window.addEventListener('appinstalled', () => {
             console.log('[App] PWA was installed');
             appState.deferredPrompt = null;
+            // Hide install button
+            if (installBtn) {
+                installBtn.classList.add('hidden');
+            }
             showMessage(t('messages.installSuccess') || 'App erfolgreich installiert!', 'ok');
         });
 
@@ -242,6 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(nfcStatusBadge) nfcStatusBadge.addEventListener('click', handleNfcAction);
         if(checkForUpdateBtn) checkForUpdateBtn.addEventListener('click', handleCheckForUpdate);
         if(clearCacheBtn) clearCacheBtn.addEventListener('click', handleClearCache);
+        if(installBtn) installBtn.addEventListener('click', showInstallPrompt);
 
         if (!isIOS()) {
             if (copyToFormBtn) {
@@ -1013,8 +1021,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (choiceResult.outcome === 'accepted') {
                 console.log('[App] User accepted the install prompt');
+                showMessage(t('messages.installAccepted') || 'Installation wird vorbereitet...', 'ok');
             } else {
                 console.log('[App] User dismissed the install prompt');
+            }
+
+            // Hide install button after prompt
+            if (installBtn) {
+                installBtn.classList.add('hidden');
             }
 
             // Clear the deferredPrompt since it can only be used once

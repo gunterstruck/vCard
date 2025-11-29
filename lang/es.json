@@ -61,7 +61,8 @@
         "cacheClearing": "Borrando caché...",
         "cacheClearSuccess": "¡Caché borrado con éxito! La página se recargará.",
         "cacheClearConfirm": "¿Realmente desea eliminar todos los datos en caché?",
-        "installSuccess": "¡Aplicación instalada con éxito!"
+        "installSuccess": "¡Aplicación instalada con éxito!",
+        "installAccepted": "Preparando instalación..."
     },
     "errors": {
         "NotAllowedError": "Se denegó el permiso para NFC.",
@@ -80,5 +81,6 @@
     },
     "themeDark": "Tema oscuro",
     "themeLight": "Tema claro",
-    "themeCustomer": "Tema cliente"
+    "themeCustomer": "Tema cliente",
+    "installApp": "Instalar aplicación"
 }

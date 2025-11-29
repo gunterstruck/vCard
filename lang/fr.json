@@ -61,7 +61,8 @@
         "cacheClearing": "Vidage du cache...",
         "cacheClearSuccess": "Cache vidé avec succès! La page va se recharger.",
         "cacheClearConfirm": "Voulez-vous vraiment supprimer toutes les données en cache?",
-        "installSuccess": "Application installée avec succès!"
+        "installSuccess": "Application installée avec succès!",
+        "installAccepted": "Préparation de l'installation..."
     },
     "errors": {
         "NotAllowedError": "La permission NFC a été refusée.",
@@ -80,5 +81,6 @@
     },
     "themeDark": "Thème sombre",
     "themeLight": "Thème clair",
-    "themeCustomer": "Thème client"
+    "themeCustomer": "Thème client",
+    "installApp": "Installer l'application"
 }

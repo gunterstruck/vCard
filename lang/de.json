@@ -61,7 +61,8 @@
         "cacheClearing": "Cache wird gelöscht...",
         "cacheClearSuccess": "Cache erfolgreich gelöscht! Die Seite wird neu geladen.",
         "cacheClearConfirm": "Möchten Sie wirklich alle zwischengespeicherten Daten löschen?",
-        "installSuccess": "App erfolgreich installiert!"
+        "installSuccess": "App erfolgreich installiert!",
+        "installAccepted": "Installation wird vorbereitet..."
     },
     "errors": {
         "NotAllowedError": "Die Berechtigung für NFC wurde verweigert.",
@@ -80,5 +81,6 @@
     },
     "themeDark": "Dunkles Design",
     "themeLight": "Helles Design",
-    "themeCustomer": "Kunden-Design"
+    "themeCustomer": "Kunden-Design",
+    "installApp": "App installieren"
 }
