@@ -10,7 +10,7 @@
 // REPO_PATH definiert für vCard Projekt
 const REPO_PATH = '/vCard/';
 // Cache-Version - Reset to v01 due to namespace change (thixx-oth → vcard)
-const CORE_CACHE_NAME = 'vcard-core-v03';
+const CORE_CACHE_NAME = 'vcard-core-v04';
 const DOC_CACHE_PREFIX = 'vcard-docs';
 
 // IndexedDB Configuration
@@ -623,6 +623,7 @@ self.addEventListener('backgroundfetchclick', (event) => {
         }
     })());
 });
+
 
 
 
