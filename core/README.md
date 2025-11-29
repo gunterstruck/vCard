@@ -21,7 +21,7 @@ The following files were removed as they were duplicates from the THiXX-I projec
 vCard uses the following structure:
 
 ```
-/VCard/
+/vCard/
 ├── assets/
 │   ├── app.js ← Active application code
 │   ├── theme-bootstrap.js ← Active theme initialization

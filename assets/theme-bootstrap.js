@@ -10,7 +10,7 @@
 
 
     // --- 0️⃣ SCOPE DEFINITION (WICHTIG: Muss mit index.html übereinstimmen!)
-    const SCOPE = '/VCard/'; // ← vCard Branding Deployment
+    const SCOPE = '/vCard/'; // ← vCard Branding Deployment
 
 
     // --- 1️⃣ Alte lokale Themes entfernen

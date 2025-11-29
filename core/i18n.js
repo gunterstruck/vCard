@@ -7,7 +7,7 @@
     'use strict';
 
     // HINZUGEFÜGT: Der Pfad zu Ihrem Repository
-    const REPO_PATH = '/VCard/';
+    const REPO_PATH = '/vCard/';
 
     const i18n = {
         translations: {},
