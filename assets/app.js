@@ -279,57 +279,68 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- vCard Functions ---
     /**
      * Creates a vCard 3.0 formatted string from contact data
+     * Optimized for UTF-8 compatibility (iOS, Android, Outlook)
      * @param {Object} data - Contact data object
      * @returns {string} vCard formatted string
      */
     function createVCardString(data) {
         const lines = ['BEGIN:VCARD', 'VERSION:3.0'];
 
-        // Full name (FN) - required field
+        // Helper function to escape special characters in vCard values
+        const escapeVCardValue = (value) => {
+            if (!value) return '';
+            return String(value)
+                .replace(/\\/g, '\\\\')  // Escape backslashes
+                .replace(/;/g, '\\;')     // Escape semicolons
+                .replace(/,/g, '\\,')     // Escape commas
+                .replace(/\n/g, '\\n');   // Escape newlines
+        };
+
+        // Full name (FN) - required field with UTF-8 charset
         const fullName = [data.fn, data.ln].filter(Boolean).join(' ').trim();
         if (fullName) {
-            lines.push(`FN:${fullName}`);
+            lines.push(`FN;CHARSET=UTF-8:${escapeVCardValue(fullName)}`);
             // N field format: Last;First;Middle;Prefix;Suffix
-            lines.push(`N:${data.ln || ''};${data.fn || ''};;;`);
+            lines.push(`N;CHARSET=UTF-8:${escapeVCardValue(data.ln || '')};${escapeVCardValue(data.fn || '')};;;`);
         }
 
-        // Organization
+        // Organization with UTF-8 charset
         if (data.org) {
-            lines.push(`ORG:${data.org}`);
+            lines.push(`ORG;CHARSET=UTF-8:${escapeVCardValue(data.org)}`);
         }
 
-        // Title/Position
+        // Title/Position with UTF-8 charset
         if (data.title) {
-            lines.push(`TITLE:${data.title}`);
+            lines.push(`TITLE;CHARSET=UTF-8:${escapeVCardValue(data.title)}`);
         }
 
-        // Phone (Mobile)
+        // Phone (Mobile) - no charset needed for numbers
         if (data.tel) {
             lines.push(`TEL;TYPE=CELL:${data.tel}`);
         }
 
-        // Work Phone
+        // Work Phone - no charset needed for numbers
         if (data.telWork) {
             lines.push(`TEL;TYPE=WORK,VOICE:${data.telWork}`);
         }
 
-        // Email
+        // Email - no charset needed, email is ASCII-safe
         if (data.email) {
             lines.push(`EMAIL;TYPE=INTERNET:${data.email}`);
         }
 
-        // Website
+        // Website - URLs are ASCII-safe
         if (data.url) {
             lines.push(`URL:${data.url}`);
         }
 
-        // Address (Work) - ADR format: ;;street;city;;zip;country
+        // Address (Work) with UTF-8 charset - ADR format: ;;street;city;;zip;country
         if (data.street || data.city || data.zip || data.country) {
-            const street = data.street || '';
-            const city = data.city || '';
-            const zip = data.zip || '';
-            const country = data.country || '';
-            lines.push(`ADR;TYPE=WORK:;;${street};${city};;${zip};${country}`);
+            const street = escapeVCardValue(data.street || '');
+            const city = escapeVCardValue(data.city || '');
+            const zip = escapeVCardValue(data.zip || '');
+            const country = escapeVCardValue(data.country || '');
+            lines.push(`ADR;TYPE=WORK;CHARSET=UTF-8:;;${street};${city};;${zip};${country}`);
         }
 
         lines.push('END:VCARD');
