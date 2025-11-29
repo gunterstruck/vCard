@@ -50,6 +50,7 @@
                         </div>
                     <div id="read-actions" class="read-actions-container hidden">
                         <button id="copy-to-form-btn" class="btn" data-i18n="copyToForm"></button>
+                        <button id="save-scanned-btn" class="btn" data-i18n="saveAsContact"></button>
                         <details class="raw-data-details">
                             <summary data-i18n="showRawData"></summary>
                             <textarea id="raw-data-output" readonly></textarea>
@@ -89,6 +90,10 @@
                                 <input type="tel" id="tel" name="tel">
                             </div>
                             <div class="form-group">
+                                <label for="telWork" data-i18n="telWork"></label>
+                                <input type="tel" id="telWork" name="telWork">
+                            </div>
+                            <div class="form-group">
                                 <label for="email" data-i18n="email"></label>
                                 <input type="email" id="email" name="email">
                             </div>
@@ -96,14 +101,31 @@
                                 <label for="url" data-i18n="url"></label>
                                 <input type="url" id="url" name="url" placeholder="https://beispiel.de">
                             </div>
+                            <div class="form-group full-width">
+                                <label for="street" data-i18n="street"></label>
+                                <input type="text" id="street" name="street">
+                            </div>
+                            <div class="form-group">
+                                <label for="zip" data-i18n="zip"></label>
+                                <input type="text" id="zip" name="zip">
+                            </div>
+                            <div class="form-group">
+                                <label for="city" data-i18n="city"></label>
+                                <input type="text" id="city" name="city">
+                            </div>
+                            <div class="form-group full-width">
+                                <label for="country" data-i18n="country"></label>
+                                <input type="text" id="country" name="country">
+                            </div>
                         </div>
                     </form>
 
                     <div class="file-operations">
                          <button id="save-vcf-btn" class="btn" data-i18n="saveFile"></button>
                          <label id="load-vcf-label" class="btn file-input-label" data-i18n="loadFile">
-                             <input type="file" id="load-vcf-input" accept=".vcf,.vcard" class="visually-hidden">
+                             <input type="file" id="load-vcf-input" accept=".vcf,text/vcard" class="visually-hidden">
                          </label>
+                         <button id="import-contact-btn" class="btn hidden" data-i18n="importContact"></button>
                     </div>
 
                     <div id="payload-container">
