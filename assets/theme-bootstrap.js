@@ -48,49 +48,57 @@
       }
     };
 
-    // --- 3️⃣ config.json synchron laden
+    // --- 3️⃣ config.json laden (async mit Fetch API)
     let selectedDesign = designs['vcard']; // Fallback für vCard
 
-    const request = new XMLHttpRequest();
-    request.open('GET', SCOPE + 'config.json', false); // synchron
-    request.send(null);
-
-    if (request.status === 200) {
+    // Lade config.json mit Fetch API (modern und nicht-deprecated)
+    async function loadThemeConfig() {
       try {
-        const config = JSON.parse(request.responseText);
-        if (config && config.design && designs[config.design]) {
-          selectedDesign = designs[config.design];
+        const response = await fetch(SCOPE + 'config.json', {
+          cache: 'no-cache',
+          signal: AbortSignal.timeout(1000) // 1s Timeout für schnelles Laden
+        });
+
+        if (response.ok) {
+          const config = await response.json();
+          if (config && config.design && designs[config.design]) {
+            selectedDesign = designs[config.design];
+
+            // Theme und Farben aktualisieren
+            applyThemeAndColors(selectedDesign);
+          }
         }
-      } catch (jsonErr) {
-        console.warn('Theme config parsing failed:', jsonErr);
-      }
-    } else {
-      console.warn('Theme config could not be loaded, using fallback:', request.status);
-    }
-
-    // --- 4️⃣ Theme sofort auf Root-Element anwenden
-    document.documentElement.setAttribute('data-theme', selectedDesign.theme);
-
-    // --- 5️⃣ Brand-Farben sofort setzen (ANTI-FLICKER!)
-    if (selectedDesign.brandColors) {
-      const root = document.documentElement;
-      
-      // Primary Color + Varianten
-      root.style.setProperty('--primary-color-override', selectedDesign.brandColors.primary);
-      
-      // Berechne dunklere und hellere Varianten
-      root.style.setProperty('--primary-dark-override', adjustColor(selectedDesign.brandColors.primary, -20));
-      root.style.setProperty('--primary-light-override', adjustColor(selectedDesign.brandColors.primary, 20));
-      
-      // Secondary Color
-      if (selectedDesign.brandColors.secondary) {
-        root.style.setProperty('--secondary-color-override', selectedDesign.brandColors.secondary);
+      } catch (error) {
+        console.warn('Theme config could not be loaded, using fallback:', error.message);
       }
     }
 
-    // --- 6️⃣ Transitions aktivieren (ANTI-FLICKER!)
-    // Nach dem Theme-Setup Klasse hinzufügen, damit CSS-Transitions aktiv werden
-    document.documentElement.classList.add('theme-loaded');
+    // Funktion zum Anwenden von Theme und Farben
+    function applyThemeAndColors(design) {
+      // Theme auf Root-Element anwenden
+      document.documentElement.setAttribute('data-theme', design.theme);
+
+      // Brand-Farben setzen
+      if (design.brandColors) {
+        const root = document.documentElement;
+        root.style.setProperty('--primary-color-override', design.brandColors.primary);
+        root.style.setProperty('--primary-dark-override', adjustColor(design.brandColors.primary, -20));
+        root.style.setProperty('--primary-light-override', adjustColor(design.brandColors.primary, 20));
+
+        if (design.brandColors.secondary) {
+          root.style.setProperty('--secondary-color-override', design.brandColors.secondary);
+        }
+      }
+
+      // Theme-loaded Klasse hinzufügen
+      document.documentElement.classList.add('theme-loaded');
+    }
+
+    // --- 4️⃣ Fallback-Theme sofort anwenden (Anti-Flicker)
+    applyThemeAndColors(selectedDesign);
+
+    // --- 5️⃣ Config asynchron nachladen und ggf. Theme aktualisieren
+    loadThemeConfig();
 
     // --- Hilfsfunktion: Farbe aufhellen/abdunkeln
     function adjustColor(color, percent) {
