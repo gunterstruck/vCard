@@ -185,53 +185,62 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Seasonal Greeting ---
     /**
      * Zeigt einen saisonalen Splash-Screen an (01.12. - 24.12.)
-     * @param {Object} data - Das dekodierte Kontakt-Objekt (für den Namen)
+     * Korrigierte Logik: Der Absender (aus der URL) wünscht dem unbekannten Empfänger frohe Festtage.
+     * @param {Object} data - Das dekodierte Kontakt-Objekt (für den Namen des Absenders)
      */
     function showSeasonalGreeting(data) {
         const now = new Date();
         const currentMonth = now.getMonth(); // 0-basiert (11 = Dezember)
         const currentDay = now.getDate();
 
-        // Logik: Nur im Dezember (Monat 11) und nur vom 1. bis 24.
+        // Logik: Nur im Dezember (11) zwischen dem 1. und 24.
         const isChristmasTime = (currentMonth === 11 && currentDay >= 1 && currentDay <= 24);
 
-        // Zum Testen kannst du dies einkommentieren:
+        // Zum Testen (damit du es jetzt siehst):
         // const isChristmasTime = true;
 
         if (!isChristmasTime) return;
 
-        // Namen ermitteln (Vorname bevorzugt)
-        let greetingName = "Besucher";
-        if (data && data.fn) {
-            greetingName = data.fn;
-        } else if (data && data.ln) {
-            greetingName = data.ln; // Fallback auf Nachname
+        // Name des ABSENDERS (Karteninhabers) ermitteln
+        // Wir nehmen hier idealerweise den vollen Namen für mehr Professionalität
+        let senderName = "Der Inhaber dieser Karte";
+        if (data && data.fn && data.ln) {
+            senderName = `${data.fn} ${data.ln}`;
+        } else if (data && data.fn) {
+            senderName = data.fn;
+        } else if (data && data.org) {
+            senderName = data.org; // Fallback auf Firmenname
         }
 
         // HTML erstellen
         const splash = document.createElement('div');
         splash.id = 'seasonal-splash';
+
+        // Hier ist der emotionale Wechsel: "NAME wünscht..." statt "Hallo NAME"
         splash.innerHTML = `
             <div class="seasonal-content">
-                <div class="seasonal-title">🎄 Frohe Winterzeit! 🎄</div>
+                <div class="seasonal-title">🎄 Frohe Festtage! 🎄</div>
                 <div class="seasonal-message">
-                    Hallo <strong>${greetingName}</strong>,<br><br>
-                    ich wünsche dir besinnliche Tage<br>
-                    und einen guten Rutsch ins neue Jahr!<br>
+                    <span style="font-size: 1.4em; color: #fff; font-weight: 600;">${senderName}</span><br>
                     <br>
-                    <small>Deine vCard wird gleich geladen...</small>
+                    wünscht eine schöne Winterzeit<br>
+                    und einen guten Rutsch ins neue Jahr! ✨
+                    <br><br>
+                    <small style="opacity: 0.7; font-size: 0.8em;">Kontaktdaten werden geladen...</small>
                 </div>
             </div>
         `;
 
-        // Lametta/Schnee erzeugen
-        const symbols = ['❄', '❅', '❆', '✨', '.'];
+        // Lametta / Schnee (bleibt gleich, weil es cool ist)
+        const symbols = ['❄', '❅', '❆', '✨', '⭐'];
         for (let i = 0; i < 50; i++) {
             const flake = document.createElement('div');
             flake.className = 'snowflake';
             flake.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+            // Zufällige Positionierung
             flake.style.left = Math.random() * 100 + 'vw';
-            flake.style.animationDuration = (Math.random() * 3 + 2) + 's'; // 2-5s Fallzeit
+            // Unterschiedliche Fallgeschwindigkeiten für Tiefe
+            flake.style.animationDuration = (Math.random() * 3 + 2) + 's';
             flake.style.opacity = Math.random();
             flake.style.fontSize = (Math.random() * 20 + 10) + 'px';
             splash.appendChild(flake);
@@ -239,19 +248,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.body.appendChild(splash);
 
-        // Klick-Listener zum sofortigen Schließen
+        // Klick zum Schließen (UX-Freundlichkeit)
         splash.addEventListener('click', () => {
             splash.classList.add('fade-out');
             setTimeout(() => splash.remove(), 800);
         });
 
-        // Automatisch entfernen nach 4 Sekunden
+        // Auto-Close nach 4.5 Sekunden (etwas länger zum Lesen des Namens)
         setTimeout(() => {
             if (document.body.contains(splash)) {
                 splash.classList.add('fade-out');
                 setTimeout(() => splash.remove(), 800);
             }
-        }, 4000);
+        }, 4500);
     }
 
     // --- App Initialization ---
