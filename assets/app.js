@@ -229,7 +229,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="seasonal-title">🎄 Liebe Weihnachtsgrüße 🎄</div>
 
                 <div class="seasonal-message">
-                    wünscht eine schöne Winterzeit<br>
+                    Das Siemens Team (zentral)<br>
+                    <br>
+                    wünscht eine schöne Weihnachtszeit<br>
                     und einen guten Rutsch ins neue Jahr! ✨
                     <br><br>
                     <div style="margin-top: 1.5rem; font-style: italic;">
