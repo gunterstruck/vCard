@@ -1,17 +1,37 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- Configuration and Constants ---
     const SCOPE = '/vCard/';
+
+    /**
+     * Application configuration constants
+     * All timing values are in milliseconds unless otherwise specified
+     * All size values are in bytes unless otherwise specified
+     */
     const CONFIG = {
-        COOLDOWN_DURATION: 2000,
-        WRITE_SUCCESS_GRACE_PERIOD: 2500,
-        WRITE_RETRY_DELAY: 200,
-        MAX_PAYLOAD_SIZE: 880,
-        DEBOUNCE_DELAY: 300,
-        MAX_LOG_ENTRIES: 15,
-        NFC_WRITE_TIMEOUT: 5000,
-        MAX_WRITE_RETRIES: 3,
-        SAFETY_BUFFER_PX: 10,
-        URL_REVOKE_DELAY: 100
+        // NFC Operation Timeouts
+        COOLDOWN_DURATION: 2000,              // ms - Cooldown period between NFC operations to prevent rapid re-triggering
+        WRITE_SUCCESS_GRACE_PERIOD: 2500,     // ms - Grace period after successful write before allowing new operations
+        WRITE_RETRY_DELAY: 200,               // ms - Delay between write retry attempts
+        NFC_WRITE_TIMEOUT: 5000,              // ms - Maximum time to wait for NFC write operation
+
+        // NFC Chip Capacities (in bytes)
+        MAX_PAYLOAD_SIZE: 880,                // bytes - Maximum vCard payload size (legacy, for reference)
+        NTAG215_CAPACITY: 504,                // bytes - NTAG215 NFC chip usable capacity
+        NTAG216_CAPACITY: 888,                // bytes - NTAG216 NFC chip usable capacity
+
+        // Retry Configuration
+        MAX_WRITE_RETRIES: 3,                 // number - Maximum number of write attempts before giving up
+
+        // UI/UX Timings
+        DEBOUNCE_DELAY: 300,                  // ms - Input debounce delay for form fields
+        URL_REVOKE_DELAY: 100,                // ms - Delay before revoking blob URLs after download
+
+        // Data Limits
+        MAX_LOG_ENTRIES: 15,                  // number - Maximum number of log entries to keep in memory
+        MAX_FIELD_LENGTH: 500,                // chars - Maximum length for individual contact fields
+
+        // Layout
+        SAFETY_BUFFER_PX: 10,                 // px - Safety buffer for UI calculations
     };
 
     // --- Application State ---
@@ -25,7 +45,51 @@ document.addEventListener('DOMContentLoaded', () => {
         nfcTimeoutId: null,
         gracePeriodTimeoutId: null,
         deferredPrompt: null,
+        blobUrls: new Set(), // Track all created blob URLs for cleanup
     };
+
+    /**
+     * Blob URL Manager - Prevents memory leaks by tracking and cleaning up blob URLs
+     */
+    const BlobUrlManager = {
+        /**
+         * Creates a blob URL and tracks it for later cleanup
+         * @param {Blob} blob - The blob to create a URL for
+         * @returns {string} The blob URL
+         */
+        create(blob) {
+            const url = URL.createObjectURL(blob);
+            appState.blobUrls.add(url);
+            return url;
+        },
+
+        /**
+         * Revokes a specific blob URL and removes it from tracking
+         * @param {string} url - The blob URL to revoke
+         */
+        revoke(url) {
+            if (url && url.startsWith('blob:')) {
+                URL.revokeObjectURL(url);
+                appState.blobUrls.delete(url);
+            }
+        },
+
+        /**
+         * Revokes all tracked blob URLs (useful for cleanup on page unload)
+         */
+        revokeAll() {
+            appState.blobUrls.forEach(url => {
+                URL.revokeObjectURL(url);
+            });
+            appState.blobUrls.clear();
+            console.log('[BlobUrlManager] All blob URLs revoked');
+        }
+    };
+
+    // Cleanup blob URLs on page unload
+    window.addEventListener('beforeunload', () => {
+        BlobUrlManager.revokeAll();
+    });
 
     // --- Design Templates ---
     const designs = {
@@ -287,7 +351,19 @@ document.addEventListener('DOMContentLoaded', () => {
      * Creates a vCard 3.0 formatted string from contact data
      * Optimized for UTF-8 compatibility (iOS, Android, Outlook)
      * @param {Object} data - Contact data object
-     * @returns {string} vCard formatted string
+     * @param {string} [data.fn] - First name
+     * @param {string} [data.ln] - Last name
+     * @param {string} [data.org] - Organization
+     * @param {string} [data.title] - Job title
+     * @param {string} [data.tel] - Mobile phone number
+     * @param {string} [data.telWork] - Work phone number
+     * @param {string} [data.email] - Email address
+     * @param {string} [data.url] - Website URL
+     * @param {string} [data.street] - Street address
+     * @param {string} [data.city] - City
+     * @param {string} [data.zip] - ZIP/Postal code
+     * @param {string} [data.country] - Country
+     * @returns {string} vCard 3.0 formatted string
      */
     function createVCardString(data) {
         const lines = ['BEGIN:VCARD', 'VERSION:3.0'];
@@ -355,17 +431,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Parses a vCard string and extracts contact data
+     * Includes input sanitization to prevent malicious data
      * @param {string} vcfString - vCard formatted string
      * @returns {Object} Parsed contact data
+     * @throws {Error} If vCard format is invalid
      */
     function parseVCard(vcfString) {
+        if (!vcfString || typeof vcfString !== 'string') {
+            throw new Error('Invalid vCard: must be a non-empty string');
+        }
+
+        // Check for basic vCard structure
+        if (!vcfString.includes('BEGIN:VCARD')) {
+            throw new Error('Invalid vCard: missing BEGIN:VCARD');
+        }
+        if (!vcfString.includes('END:VCARD')) {
+            throw new Error('Invalid vCard: missing END:VCARD');
+        }
+
         const data = {};
         const lines = vcfString.split(/\r?\n/);
 
+        // Helper to unescape vCard values
+        const unescapeVCardValue = (value) => {
+            if (!value) return '';
+            return String(value)
+                .replace(/\\n/g, '\n')
+                .replace(/\\,/g, ',')
+                .replace(/\\;/g, ';')
+                .replace(/\\\\/g, '\\');
+        };
+
         for (const line of lines) {
+            // Skip empty lines and vCard structure lines
+            if (!line.trim() || line.startsWith('BEGIN:') || line.startsWith('END:') || line.startsWith('VERSION:')) {
+                continue;
+            }
+
             // FN - Full Name
-            if (line.startsWith('FN:')) {
-                const fullName = line.substring(3);
+            if (line.startsWith('FN:') || line.startsWith('FN;')) {
+                const fullName = sanitizeValue(unescapeVCardValue(line.substring(line.indexOf(':') + 1)));
                 const parts = fullName.split(' ');
                 if (parts.length >= 2) {
                     data.fn = parts[0];
@@ -376,25 +481,25 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // N - Structured Name (Last;First;Middle;Prefix;Suffix)
-            else if (line.startsWith('N:')) {
-                const parts = line.substring(2).split(';');
-                if (parts[1] && !data.fn) data.fn = parts[1];
-                if (parts[0] && !data.ln) data.ln = parts[0];
+            else if (line.startsWith('N:') || line.startsWith('N;')) {
+                const parts = line.substring(line.indexOf(':') + 1).split(';');
+                if (parts[1] && !data.fn) data.fn = sanitizeValue(unescapeVCardValue(parts[1]));
+                if (parts[0] && !data.ln) data.ln = sanitizeValue(unescapeVCardValue(parts[0]));
             }
 
             // ORG - Organization
-            else if (line.startsWith('ORG:')) {
-                data.org = line.substring(4);
+            else if (line.startsWith('ORG:') || line.startsWith('ORG;')) {
+                data.org = sanitizeValue(unescapeVCardValue(line.substring(line.indexOf(':') + 1)));
             }
 
             // TITLE - Job Title
-            else if (line.startsWith('TITLE:')) {
-                data.title = line.substring(6);
+            else if (line.startsWith('TITLE:') || line.startsWith('TITLE;')) {
+                data.title = sanitizeValue(unescapeVCardValue(line.substring(line.indexOf(':') + 1)));
             }
 
             // TEL - Phone (distinguish between mobile and work)
             else if (line.startsWith('TEL')) {
-                const tel = line.substring(line.indexOf(':') + 1);
+                const tel = sanitizeValue(line.substring(line.indexOf(':') + 1));
                 // Check if it's a work phone
                 if (line.includes('TYPE=WORK') || line.includes('type=work')) {
                     data.telWork = tel;
@@ -406,13 +511,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // EMAIL - Email
             else if (line.startsWith('EMAIL')) {
-                const email = line.substring(line.indexOf(':') + 1);
-                data.email = email;
+                const email = sanitizeValue(line.substring(line.indexOf(':') + 1));
+                // Basic email validation
+                if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                    data.email = email;
+                }
             }
 
             // URL - Website
-            else if (line.startsWith('URL:')) {
-                data.url = line.substring(4);
+            else if (line.startsWith('URL:') || line.startsWith('URL;')) {
+                const url = sanitizeValue(line.substring(line.indexOf(':') + 1));
+                // Basic URL validation
+                try {
+                    new URL(url);
+                    data.url = url;
+                } catch {
+                    console.warn('Invalid URL in vCard:', url);
+                }
             }
 
             // ADR - Address (format: ;;street;city;;zip;country)
@@ -421,12 +536,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const parts = adr.split(';');
                 // ADR format: POBox;ExtendedAddress;Street;City;Region;PostalCode;Country
                 if (parts.length >= 7) {
-                    data.street = parts[2] || '';
-                    data.city = parts[3] || '';
-                    data.zip = parts[5] || '';
-                    data.country = parts[6] || '';
+                    data.street = sanitizeValue(unescapeVCardValue(parts[2] || ''));
+                    data.city = sanitizeValue(unescapeVCardValue(parts[3] || ''));
+                    data.zip = sanitizeValue(unescapeVCardValue(parts[5] || ''));
+                    data.country = sanitizeValue(unescapeVCardValue(parts[6] || ''));
                 }
             }
+        }
+
+        // Validate that we have at least some meaningful data
+        if (!data.fn && !data.ln && !data.email && !data.tel) {
+            throw new Error('Invalid vCard: no contact information found');
         }
 
         return data;
@@ -434,12 +554,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- URL-Based Contact Data Encoding/Decoding ---
     /**
+     * Sanitizes a string value to prevent injection attacks
+     * @param {string} value - The value to sanitize
+     * @returns {string} Sanitized value
+     */
+    function sanitizeValue(value) {
+        if (!value) return '';
+
+        // Convert to string and trim
+        let sanitized = String(value).trim();
+
+        // Remove null bytes and control characters (except newlines for addresses)
+        sanitized = sanitized.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
+
+        // Limit length to prevent DoS
+        if (sanitized.length > CONFIG.MAX_FIELD_LENGTH) {
+            sanitized = sanitized.substring(0, CONFIG.MAX_FIELD_LENGTH);
+            console.warn(`Field truncated to ${CONFIG.MAX_FIELD_LENGTH} characters`);
+        }
+
+        return sanitized;
+    }
+
+    /**
      * Encodes contact data into a compact URL parameter
      * Uses short keys to minimize URL length for NFC chip capacity
+     * Sanitizes all input data to prevent injection attacks
      * @param {Object} data - Contact data object
      * @returns {string} Base64-encoded JSON string
+     * @throws {Error} If data is invalid or encoding fails
      */
     function encodeContactDataToUrl(data) {
+        if (!data || typeof data !== 'object') {
+            throw new Error('Invalid contact data: must be an object');
+        }
+
         // Map full field names to short keys (1-2 chars) to save space
         const shortKeys = {
             fn: 'n',      // First name
@@ -456,19 +605,30 @@ document.addEventListener('DOMContentLoaded', () => {
             country: 'k'  // Country (k for Kontry to avoid confusion)
         };
 
-        // Create compact object with only filled fields
+        // Create compact object with only filled fields (with sanitization)
         const compactData = {};
         for (const [fullKey, value] of Object.entries(data)) {
             if (value && String(value).trim()) {
                 const shortKey = shortKeys[fullKey] || fullKey;
-                compactData[shortKey] = String(value).trim();
+                // Sanitize value before encoding
+                compactData[shortKey] = sanitizeValue(value);
             }
         }
 
-        // Convert to JSON and encode to Base64
-        const json = JSON.stringify(compactData);
-        const base64 = btoa(unescape(encodeURIComponent(json))); // UTF-8 safe encoding
-        return base64;
+        // Validate that we have at least some data
+        if (Object.keys(compactData).length === 0) {
+            throw new Error('No valid contact data to encode');
+        }
+
+        try {
+            // Convert to JSON and encode to Base64
+            const json = JSON.stringify(compactData);
+            const base64 = btoa(unescape(encodeURIComponent(json))); // UTF-8 safe encoding
+            return base64;
+        } catch (error) {
+            console.error('Failed to encode contact data:', error);
+            throw new Error('Failed to encode contact data: ' + error.message);
+        }
     }
 
     /**
@@ -514,13 +674,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Generates complete URL with contact data for NFC chip
+     * Validates the resulting URL to ensure it's within NFC chip capacity limits
      * @param {Object} data - Contact data object
      * @returns {string} Complete URL with encoded data parameter
+     * @throws {Error} If URL generation fails or exceeds size limits
      */
     function generateContactUrl(data) {
-        const encodedData = encodeContactDataToUrl(data);
-        const baseUrl = window.location.origin + window.location.pathname;
-        return `${baseUrl}?d=${encodedData}`;
+        try {
+            const encodedData = encodeContactDataToUrl(data);
+            const baseUrl = window.location.origin + window.location.pathname;
+            const fullUrl = `${baseUrl}?d=${encodedData}`;
+
+            // Validate URL format
+            const urlObj = new URL(fullUrl);
+            if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+                throw new Error('Invalid URL protocol: must be http or https');
+            }
+
+            // Check URL length for NFC compatibility
+            const urlByteSize = new TextEncoder().encode(fullUrl).length;
+
+            if (urlByteSize > CONFIG.NTAG216_CAPACITY) {
+                throw new Error(`URL too long (${urlByteSize} bytes). Maximum: ${CONFIG.NTAG216_CAPACITY} bytes. Please reduce contact data.`);
+            }
+
+            return fullUrl;
+        } catch (error) {
+            console.error('Failed to generate contact URL:', error);
+            throw error;
+        }
     }
 
     /**
@@ -652,6 +834,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- NFC Logic ---
     /**
      * Starts NFC scanning for reading vCard data from tags
+     * Sets up event listeners for reading and error handling
+     * @returns {Promise<void>}
+     * @throws {Error} If NFC scanning fails to start
      */
     async function startScanning() {
         try {
@@ -745,12 +930,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /**
+     * Handles NFC action (read or write) with race condition protection
+     * Uses a lock mechanism to prevent concurrent NFC operations
+     * @returns {Promise<void>}
+     */
     async function handleNfcAction() {
-        if (appState.isNfcActionActive || appState.isCooldownActive) return;
+        // Race condition protection: Check and set atomically
+        // If already active or in cooldown, exit immediately
+        if (appState.isNfcActionActive || appState.isCooldownActive) {
+            console.warn('[NFC] Operation already in progress or in cooldown');
+            return;
+        }
+
+        // Set lock immediately to prevent race conditions
+        appState.isNfcActionActive = true;
+
+        // Double-check after setting (defense in depth)
+        // Small delay to ensure any concurrent calls have set their flag
+        await new Promise(resolve => setTimeout(resolve, 10));
+
         const writeTab = document.getElementById('write-tab');
         const isWriteMode = writeTab?.classList.contains('active') || false;
 
-        appState.isNfcActionActive = true;
         appState.abortController = new AbortController();
 
         // Read Mode
@@ -835,6 +1037,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Data Processing & Form Handling ---
+    /**
+     * Extracts and returns form data as a clean object
+     * Only includes fields with non-empty values
+     * @returns {Object} Contact data object with trimmed values
+     */
     function getFormData() {
         const formData = new FormData(form);
         const data = {};
@@ -866,12 +1073,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const urlByteCount = new TextEncoder().encode(contactUrl).length;
         const vcardByteCount = new TextEncoder().encode(vcardString).length;
 
-        // NTAG215 has 504 bytes usable capacity, NTAG216 has 888 bytes
-        const NTAG215_CAPACITY = 504;
-        payloadSize.textContent = `URL: ${urlByteCount} Bytes | vCard: ${vcardByteCount} Bytes | Empfohlen: NTAG215 (504B) oder NTAG216 (888B)`;
+        // Display size info with chip recommendations
+        payloadSize.textContent = `URL: ${urlByteCount} Bytes | vCard: ${vcardByteCount} Bytes | Empfohlen: NTAG215 (${CONFIG.NTAG215_CAPACITY}B) oder NTAG216 (${CONFIG.NTAG216_CAPACITY}B)`;
 
         // Warn if URL exceeds NTAG215 capacity
-        const isOverLimit = urlByteCount > NTAG215_CAPACITY;
+        const isOverLimit = urlByteCount > CONFIG.NTAG215_CAPACITY;
         payloadSize.classList.toggle('limit-exceeded', isOverLimit);
         nfcStatusBadge.disabled = isOverLimit;
 
@@ -882,6 +1088,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /**
+     * Validates form data before NFC write operation
+     * Checks for required fields, valid formats, and size constraints
+     * @returns {string[]} Array of error messages (empty if valid)
+     */
     function validateForm() {
         const errors = [];
         const formData = getFormData();
@@ -913,10 +1124,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Check URL payload size (for Link-Tree workflow)
         const contactUrl = generateContactUrl(formData);
         const urlByteSize = new TextEncoder().encode(contactUrl).length;
-        const NTAG215_CAPACITY = 504;
 
-        if (urlByteSize > NTAG215_CAPACITY) {
-            errors.push(`URL zu lang (${urlByteSize} Bytes). Max. 504 Bytes für NTAG215. Bitte Daten kürzen oder NTAG216 verwenden.`);
+        if (urlByteSize > CONFIG.NTAG215_CAPACITY) {
+            errors.push(`URL zu lang (${urlByteSize} Bytes). Max. ${CONFIG.NTAG215_CAPACITY} Bytes für NTAG215. Bitte Daten kürzen oder NTAG216 verwenden.`);
         }
 
         return errors;
@@ -929,7 +1139,34 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderLog() { if (!eventLogOutput) return; eventLogOutput.innerHTML = ''; appState.eventLog.forEach(entry => { const div = document.createElement('div'); div.className = `log-entry ${entry.type}`; const timestamp = document.createElement('span'); timestamp.className = 'log-timestamp'; timestamp.textContent = entry.timestamp; const message = document.createTextNode(` ${entry.message}`); div.appendChild(timestamp); div.appendChild(message); eventLogOutput.appendChild(div); }); }
 
     // --- UI/UX Functions ---
-    function updateManifest(design) { const manifestLink = document.querySelector('link[rel="manifest"]'); if (!manifestLink) return; const oldHref = manifestLink.href; if (oldHref && oldHref.startsWith('blob:')) { URL.revokeObjectURL(oldHref); } const newManifest = { name: design.appName, short_name: design.short_name, start_url: "/vCard/index.html", scope: "/vCard/", display: "standalone", background_color: "#ffffff", theme_color: design.brandColors.primary || "#f04e37", orientation: "portrait-primary", icons: [{ src: design.icons.icon192, sizes: "192x192", type: "image/png" }, { src: design.icons.icon512, sizes: "512x512", type: "image/png" }] }; const blob = new Blob([JSON.stringify(newManifest)], { type: 'application/json' }); manifestLink.href = URL.createObjectURL(blob); }
+    function updateManifest(design) {
+        const manifestLink = document.querySelector('link[rel="manifest"]');
+        if (!manifestLink) return;
+
+        // Revoke old blob URL if exists
+        const oldHref = manifestLink.href;
+        if (oldHref && oldHref.startsWith('blob:')) {
+            BlobUrlManager.revoke(oldHref);
+        }
+
+        const newManifest = {
+            name: design.appName,
+            short_name: design.short_name,
+            start_url: "/vCard/index.html",
+            scope: "/vCard/",
+            display: "standalone",
+            background_color: "#ffffff",
+            theme_color: design.brandColors.primary || "#f04e37",
+            orientation: "portrait-primary",
+            icons: [
+                { src: design.icons.icon192, sizes: "192x192", type: "image/png" },
+                { src: design.icons.icon512, sizes: "512x512", type: "image/png" }
+            ]
+        };
+
+        const blob = new Blob([JSON.stringify(newManifest)], { type: 'application/json' });
+        manifestLink.href = BlobUrlManager.create(blob); // Use BlobUrlManager instead of direct URL.createObjectURL
+    }
     function applyTheme(themeName) { const themeButtons = document.querySelectorAll('.theme-btn'); document.documentElement.setAttribute('data-theme', themeName); localStorage.setItem('vcard-theme', themeName); themeButtons.forEach(btn => { btn.classList.toggle('active', btn.dataset.theme === themeName); }); const metaThemeColor = document.querySelector('meta[name="theme-color"]'); if (metaThemeColor) { const colors = { dark: '#0f172a', light: '#f8f9fa', 'customer-brand': '#FCFCFD' }; metaThemeColor.setAttribute('content', colors[themeName] || '#FCFCFD'); } }
     function setupReadTabInitialState() { contactCard.innerHTML = ''; const p = document.createElement('p'); p.className = 'placeholder-text'; p.textContent = t('placeholderRead'); contactCard.appendChild(p); if(readActions) readActions.classList.add('hidden'); }
     function initCollapsibles() { document.querySelectorAll('.collapsible').forEach(el => makeCollapsible(el)) }
@@ -1059,7 +1296,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = getFormData();
         const vcardString = createVCardString(data);
         const blob = new Blob([vcardString], { type: 'text/vcard' });
-        const url = URL.createObjectURL(blob);
+        const url = BlobUrlManager.create(blob); // Use BlobUrlManager
         const a = document.createElement('a');
         a.href = url;
         let filename = [data.fn, data.ln].filter(Boolean).join('_') || 'contact';
@@ -1071,7 +1308,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        setTimeout(() => { URL.revokeObjectURL(url); }, CONFIG.URL_REVOKE_DELAY);
+        setTimeout(() => {
+            BlobUrlManager.revoke(url); // Use BlobUrlManager for cleanup
+        }, CONFIG.URL_REVOKE_DELAY);
         showMessage(t('messages.saveSuccess'), 'ok');
     }
 
@@ -1267,7 +1506,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const vcardString = createVCardString(appState.scannedDataObject);
         const blob = new Blob([vcardString], { type: 'text/vcard' });
-        const url = URL.createObjectURL(blob);
+        const url = BlobUrlManager.create(blob); // Use BlobUrlManager
         const a = document.createElement('a');
         a.href = url;
 
@@ -1282,7 +1521,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        setTimeout(() => { URL.revokeObjectURL(url); }, CONFIG.URL_REVOKE_DELAY);
+        setTimeout(() => {
+            BlobUrlManager.revoke(url); // Use BlobUrlManager for cleanup
+        }, CONFIG.URL_REVOKE_DELAY);
         showMessage(t('messages.saveSuccess'), 'ok');
     }
 
