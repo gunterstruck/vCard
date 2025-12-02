@@ -731,3 +731,46 @@ footer { padding: 1.5rem 0; text-align: center; }
         opacity: 0.3;
     }
 }
+
+/* =========================================
+   Splash-Button
+   ========================================= */
+
+.splash-btn {
+    margin-top: 2.5rem;
+    padding: 1rem 2rem;
+    background-color: #006400;
+    color: #ffffff;
+    border: 2px solid #FFD700;
+    border-radius: 50px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 100, 0, 0.4);
+    transition: all 0.5s ease;
+    opacity: 0;
+    transform: translateY(20px);
+    pointer-events: none;
+}
+
+.splash-btn.visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+    animation: pulseButton 2s infinite;
+}
+
+.splash-btn:hover {
+    background-color: #008000;
+    transform: scale(1.05);
+}
+
+.splash-btn:active {
+    transform: scale(0.95);
+}
+
+@keyframes pulseButton {
+    0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(255, 215, 0, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
+}
