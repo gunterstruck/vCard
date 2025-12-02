@@ -655,7 +655,7 @@ footer { padding: 1.5rem 0; text-align: center; }
     line-height: 1.6;
 }
 
-/* Einfaches Lametta / Schnee via CSS */
+/* Animiertes Lametta / Schnee via CSS (wie geburtstag-Repo) */
 .snowflake {
     position: absolute;
     top: -10px;
@@ -667,5 +667,12 @@ footer { padding: 1.5rem 0; text-align: center; }
 }
 
 @keyframes fall {
-    to { transform: translateY(105vh); }
+    0% {
+        transform: translateY(-100%) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(105vh) rotate(720deg);
+        opacity: 0;
+    }
 }

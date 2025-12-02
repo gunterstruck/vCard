@@ -185,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Seasonal Greeting ---
     /**
      * Zeigt einen saisonalen Splash-Screen an (01.12. - 24.12.)
-     * Korrigierte Logik: Der Absender (aus der URL) wünscht dem unbekannten Empfänger frohe Festtage.
+     * Die App (Container) wird dabei ausgeblendet, damit der Splash alleinstehend wirkt.
      * @param {Object} data - Das dekodierte Kontakt-Objekt (für den Namen des Absenders)
      */
     function showSeasonalGreeting(data) {
@@ -201,11 +201,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!isChristmasTime) return;
 
+        // 1. Haupt-Container ausblenden (nutzt die existierende .hidden Klasse)
+        const mainContainer = document.querySelector('.container');
+        if (mainContainer) {
+            mainContainer.classList.add('hidden');
+        }
+
         // Name des ABSENDERS (Karteninhabers) ermitteln
         // Priorität: 1. Explizites Gruß-Feld, 2. Vorname + Nachname, 3. Nur Vorname, 4. Firmenname
         let senderName = "Der Inhaber dieser Karte";
 
-        // 1. Priorität: Das explizite Gruß-Feld (NEU)
+        // 1. Priorität: Das explizite Gruß-Feld
         if (data && data.greetingName) {
             senderName = data.greetingName;
         }
@@ -224,7 +230,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const splash = document.createElement('div');
         splash.id = 'seasonal-splash';
 
-        // Hier ist der emotionale Wechsel: "NAME wünscht..." statt "Hallo NAME"
         splash.innerHTML = `
             <div class="seasonal-content">
                 <div class="seasonal-title">🎄 Frohe Festtage! 🎄</div>
@@ -239,7 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
 
-        // Lametta / Schnee (bleibt gleich, weil es cool ist)
+        // Animiertes Lametta / Schnee
         const symbols = ['❄', '❅', '❆', '✨', '⭐'];
         for (let i = 0; i < 50; i++) {
             const flake = document.createElement('div');
@@ -249,24 +254,35 @@ document.addEventListener('DOMContentLoaded', () => {
             flake.style.left = Math.random() * 100 + 'vw';
             // Unterschiedliche Fallgeschwindigkeiten für Tiefe
             flake.style.animationDuration = (Math.random() * 3 + 2) + 's';
-            flake.style.opacity = Math.random();
             flake.style.fontSize = (Math.random() * 20 + 10) + 'px';
             splash.appendChild(flake);
         }
 
         document.body.appendChild(splash);
 
-        // Klick zum Schließen (UX-Freundlichkeit)
-        splash.addEventListener('click', () => {
+        // Funktion zum Schließen und Wiederherstellen der App
+        const closeSplash = () => {
             splash.classList.add('fade-out');
-            setTimeout(() => splash.remove(), 800);
-        });
 
-        // Auto-Close nach 4.5 Sekunden (etwas länger zum Lesen des Namens)
+            // Nach der Fade-Out Animation (800ms)
+            setTimeout(() => {
+                splash.remove();
+                // 2. Container wieder einblenden
+                if (mainContainer) {
+                    mainContainer.classList.remove('hidden');
+                    // Optional: Scroll nach oben setzen
+                    window.scrollTo(0, 0);
+                }
+            }, 800);
+        };
+
+        // Event Listener
+        splash.addEventListener('click', closeSplash);
+
+        // Auto-Close nach 4.5 Sekunden
         setTimeout(() => {
             if (document.body.contains(splash)) {
-                splash.classList.add('fade-out');
-                setTimeout(() => splash.remove(), 800);
+                closeSplash();
             }
         }, 4500);
     }
