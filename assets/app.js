@@ -182,6 +182,78 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- Seasonal Greeting ---
+    /**
+     * Zeigt einen saisonalen Splash-Screen an (01.12. - 24.12.)
+     * @param {Object} data - Das dekodierte Kontakt-Objekt (für den Namen)
+     */
+    function showSeasonalGreeting(data) {
+        const now = new Date();
+        const currentMonth = now.getMonth(); // 0-basiert (11 = Dezember)
+        const currentDay = now.getDate();
+
+        // Logik: Nur im Dezember (Monat 11) und nur vom 1. bis 24.
+        const isChristmasTime = (currentMonth === 11 && currentDay >= 1 && currentDay <= 24);
+
+        // Zum Testen kannst du dies einkommentieren:
+        // const isChristmasTime = true;
+
+        if (!isChristmasTime) return;
+
+        // Namen ermitteln (Vorname bevorzugt)
+        let greetingName = "Besucher";
+        if (data && data.fn) {
+            greetingName = data.fn;
+        } else if (data && data.ln) {
+            greetingName = data.ln; // Fallback auf Nachname
+        }
+
+        // HTML erstellen
+        const splash = document.createElement('div');
+        splash.id = 'seasonal-splash';
+        splash.innerHTML = `
+            <div class="seasonal-content">
+                <div class="seasonal-title">🎄 Frohe Winterzeit! 🎄</div>
+                <div class="seasonal-message">
+                    Hallo <strong>${greetingName}</strong>,<br><br>
+                    ich wünsche dir besinnliche Tage<br>
+                    und einen guten Rutsch ins neue Jahr!<br>
+                    <br>
+                    <small>Deine vCard wird gleich geladen...</small>
+                </div>
+            </div>
+        `;
+
+        // Lametta/Schnee erzeugen
+        const symbols = ['❄', '❅', '❆', '✨', '.'];
+        for (let i = 0; i < 50; i++) {
+            const flake = document.createElement('div');
+            flake.className = 'snowflake';
+            flake.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+            flake.style.left = Math.random() * 100 + 'vw';
+            flake.style.animationDuration = (Math.random() * 3 + 2) + 's'; // 2-5s Fallzeit
+            flake.style.opacity = Math.random();
+            flake.style.fontSize = (Math.random() * 20 + 10) + 'px';
+            splash.appendChild(flake);
+        }
+
+        document.body.appendChild(splash);
+
+        // Klick-Listener zum sofortigen Schließen
+        splash.addEventListener('click', () => {
+            splash.classList.add('fade-out');
+            setTimeout(() => splash.remove(), 800);
+        });
+
+        // Automatisch entfernen nach 4 Sekunden
+        setTimeout(() => {
+            if (document.body.contains(splash)) {
+                splash.classList.add('fade-out');
+                setTimeout(() => splash.remove(), 800);
+            }
+        }, 4000);
+    }
+
     // --- App Initialization ---
     async function loadConfig() { try { const response = await fetch('/vCard/config.json'); if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`); return await response.json(); } catch (error) { console.warn('Config load failed, using default.', error); return { design: "default" }; } }
 
@@ -723,6 +795,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // Decode contact data from URL
             const contactData = decodeContactDataFromUrl(encodedData);
             console.log('[URL Read] Decoded contact data from URL:', contactData);
+
+            // --- NEU: Weihnachts-Check hier einfügen ---
+            showSeasonalGreeting(contactData);
+            // ------------------------------------------
 
             // Store in app state
             appState.scannedDataObject = contactData;
