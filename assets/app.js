@@ -1293,8 +1293,65 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function saveFormAsVcf() {
+        // Validate form data before saving
         const data = getFormData();
+
+        // Check if there's any data to save
+        if (!data || Object.keys(data).length === 0) {
+            showMessage(t('errors.noDataToSave') || 'Keine Daten zum Speichern vorhanden', 'err');
+            addLogEntry('VCF-Speicherung blockiert: Keine Daten vorhanden', 'err');
+            return;
+        }
+
+        // Validate form data (email format, URL format, etc.)
+        const validationErrors = [];
+
+        // Check if at least a name is provided
+        if (!data.fn && !data.ln) {
+            validationErrors.push(t('errors.missingName') || 'Mindestens Vor- oder Nachname erforderlich');
+        }
+
+        // Validate email format if provided
+        if (data.email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(data.email)) {
+                validationErrors.push(t('errors.invalidEmail') || 'Ungültige E-Mail-Adresse');
+            }
+        }
+
+        // Validate URL format if provided
+        if (data.url) {
+            try {
+                new URL(data.url);
+            } catch {
+                validationErrors.push(t('errors.invalidUrl') || 'Ungültige URL');
+            }
+        }
+
+        // If validation errors exist, block download and show errors
+        if (validationErrors.length > 0) {
+            const errorMessage = validationErrors.join('\n');
+            showMessage(errorMessage, 'err', 6000);
+            addLogEntry('VCF-Speicherung blockiert: Validierungsfehler', 'err');
+            return;
+        }
+
+        // Generate vCard string
         const vcardString = createVCardString(data);
+        const vcardByteSize = new TextEncoder().encode(vcardString).length;
+
+        // Enforce payload size limits
+        if (vcardByteSize > CONFIG.NTAG216_CAPACITY) {
+            const errorMsg = `vCard zu groß (${vcardByteSize} Bytes). Maximum: ${CONFIG.NTAG216_CAPACITY} Bytes. Bitte Daten kürzen.`;
+            showMessage(errorMsg, 'err', 6000);
+            addLogEntry(`VCF-Speicherung blockiert: ${vcardByteSize} Bytes > ${CONFIG.NTAG216_CAPACITY} Bytes`, 'err');
+            return;
+        }
+
+        // Log successful validation with size info
+        addLogEntry(`VCF-Speicherung: ${vcardByteSize} Bytes (Limit: ${CONFIG.NTAG216_CAPACITY} Bytes)`, 'ok');
+
+        // Proceed with download
         const blob = new Blob([vcardString], { type: 'text/vcard' });
         const url = BlobUrlManager.create(blob); // Use BlobUrlManager
         const a = document.createElement('a');
@@ -1311,7 +1368,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             BlobUrlManager.revoke(url); // Use BlobUrlManager for cleanup
         }, CONFIG.URL_REVOKE_DELAY);
-        showMessage(t('messages.saveSuccess'), 'ok');
+        showMessage(t('messages.saveSuccess') + ` (${vcardByteSize} Bytes)`, 'ok');
     }
 
     function loadVcfIntoForm(event) {
@@ -1499,18 +1556,50 @@ document.addEventListener('DOMContentLoaded', () => {
      * Saves the currently scanned data as a VCF file
      */
     function saveScannedDataAsVcf() {
+        // Check if scanned data exists
         if (!appState.scannedDataObject) {
-            showMessage(t('messages.noDataToSave'), 'err');
+            showMessage(t('messages.noDataToSave') || 'Keine Daten zum Speichern vorhanden', 'err');
+            addLogEntry('VCF-Speicherung blockiert: Keine gescannten Daten vorhanden', 'err');
             return;
         }
 
-        const vcardString = createVCardString(appState.scannedDataObject);
+        const data = appState.scannedDataObject;
+
+        // Validate that we have meaningful data
+        if (!data || Object.keys(data).length === 0) {
+            showMessage(t('errors.noDataToSave') || 'Keine Daten zum Speichern vorhanden', 'err');
+            addLogEntry('VCF-Speicherung blockiert: Gescannte Daten sind leer', 'err');
+            return;
+        }
+
+        // Check if at least a name is provided
+        if (!data.fn && !data.ln) {
+            showMessage(t('errors.missingName') || 'Mindestens Vor- oder Nachname erforderlich', 'err');
+            addLogEntry('VCF-Speicherung blockiert: Kein Name in gescannten Daten', 'err');
+            return;
+        }
+
+        // Generate vCard string
+        const vcardString = createVCardString(data);
+        const vcardByteSize = new TextEncoder().encode(vcardString).length;
+
+        // Enforce payload size limits
+        if (vcardByteSize > CONFIG.NTAG216_CAPACITY) {
+            const errorMsg = `vCard zu groß (${vcardByteSize} Bytes). Maximum: ${CONFIG.NTAG216_CAPACITY} Bytes. Bitte Daten kürzen.`;
+            showMessage(errorMsg, 'err', 6000);
+            addLogEntry(`VCF-Speicherung blockiert: ${vcardByteSize} Bytes > ${CONFIG.NTAG216_CAPACITY} Bytes`, 'err');
+            return;
+        }
+
+        // Log successful validation with size info
+        addLogEntry(`VCF-Speicherung (gescannt): ${vcardByteSize} Bytes (Limit: ${CONFIG.NTAG216_CAPACITY} Bytes)`, 'ok');
+
+        // Proceed with download
         const blob = new Blob([vcardString], { type: 'text/vcard' });
         const url = BlobUrlManager.create(blob); // Use BlobUrlManager
         const a = document.createElement('a');
         a.href = url;
 
-        const data = appState.scannedDataObject;
         let filename = [data.fn, data.ln].filter(Boolean).join('_') || 'scanned_contact';
         // Force .vcf extension
         if (!filename.toLowerCase().endsWith('.vcf')) {
@@ -1524,7 +1613,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             BlobUrlManager.revoke(url); // Use BlobUrlManager for cleanup
         }, CONFIG.URL_REVOKE_DELAY);
-        showMessage(t('messages.saveSuccess'), 'ok');
+        showMessage(t('messages.saveSuccess') + ` (${vcardByteSize} Bytes)`, 'ok');
     }
 
     /**
