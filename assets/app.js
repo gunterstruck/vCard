@@ -202,11 +202,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isChristmasTime) return;
 
         // Name des ABSENDERS (Karteninhabers) ermitteln
-        // Wir nehmen hier idealerweise den vollen Namen für mehr Professionalität
+        // Priorität: 1. Explizites Gruß-Feld, 2. Vorname + Nachname, 3. Nur Vorname, 4. Firmenname
         let senderName = "Der Inhaber dieser Karte";
-        if (data && data.fn && data.ln) {
+
+        // 1. Priorität: Das explizite Gruß-Feld (NEU)
+        if (data && data.greetingName) {
+            senderName = data.greetingName;
+        }
+        // 2. Priorität: Vorname + Nachname
+        else if (data && data.fn && data.ln) {
             senderName = `${data.fn} ${data.ln}`;
-        } else if (data && data.fn) {
+        }
+        // 3. Priorität: Nur Vorname oder Firma
+        else if (data && data.fn) {
             senderName = data.fn;
         } else if (data && data.org) {
             senderName = data.org; // Fallback auf Firmenname
@@ -672,6 +680,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Map full field names to short keys (1-2 chars) to save space
         const shortKeys = {
+            greetingName: 'g', // Greeting name for seasonal messages
             fn: 'n',      // First name
             ln: 'l',      // Last name
             org: 'o',     // Organization
@@ -726,6 +735,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Map short keys back to full field names
             const fullKeys = {
+                g: 'greetingName', // Greeting name for seasonal messages
                 n: 'fn',      // First name
                 l: 'ln',      // Last name
                 o: 'org',     // Organization
