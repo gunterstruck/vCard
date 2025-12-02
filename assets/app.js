@@ -185,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Seasonal Greeting ---
     /**
      * Zeigt einen saisonalen Splash-Screen an (01.12. - 24.12.)
-     * Die App (Container) wird dabei ausgeblendet, damit der Splash alleinstehend wirkt.
+     * Mit verzögertem "Weiter"-Button.
      * @param {Object} data - Das dekodierte Kontakt-Objekt (für den Namen des Absenders)
      */
     function showSeasonalGreeting(data) {
@@ -196,34 +196,28 @@ document.addEventListener('DOMContentLoaded', () => {
         // Logik: Nur im Dezember (11) zwischen dem 1. und 24.
         const isChristmasTime = (currentMonth === 11 && currentDay >= 1 && currentDay <= 24);
 
-        // Zum Testen (damit du es jetzt siehst):
-        // const isChristmasTime = true;
+        // const isChristmasTime = true; // Zum Testen einkommentieren
 
         if (!isChristmasTime) return;
 
-        // 1. Haupt-Container ausblenden (nutzt die existierende .hidden Klasse)
+        // Haupt-Container ausblenden
         const mainContainer = document.querySelector('.container');
-        if (mainContainer) {
-            mainContainer.classList.add('hidden');
-        }
+        if (mainContainer) mainContainer.classList.add('hidden');
 
-        // Name des ABSENDERS (Karteninhabers) ermitteln
-        // Priorität: 1. Explizites Gruß-Feld, 2. Vorname + Nachname, 3. Nur Vorname, 4. Firmenname
+        // Name ermitteln
         let senderName = "Der Inhaber dieser Karte";
-
-        // 1. Priorität: Das explizite Gruß-Feld
-        if (data && data.greetingName) {
+        if (data?.greetingName) {
             senderName = data.greetingName;
+        } else if (data?.fn) {
+            senderName = data.fn + (data.ln ? ` ${data.ln}` : '');
         }
-        // 2. Priorität: Vorname + Nachname
-        else if (data && data.fn && data.ln) {
-            senderName = `${data.fn} ${data.ln}`;
-        }
-        // 3. Priorität: Nur Vorname oder Firma
-        else if (data && data.fn) {
-            senderName = data.fn;
-        } else if (data && data.org) {
-            senderName = data.org; // Fallback auf Firmenname
+
+        // Firma ermitteln
+        let senderCompany = '';
+        if (data?.greetingCompany) {
+            senderCompany = data.greetingCompany;
+        } else if (data?.org) {
+            senderCompany = data.org;
         }
 
         // HTML erstellen
@@ -232,59 +226,67 @@ document.addEventListener('DOMContentLoaded', () => {
 
         splash.innerHTML = `
             <div class="seasonal-content">
-                <div class="seasonal-title">🎄 Frohe Festtage! 🎄</div>
+                <div class="seasonal-title">🎄 Liebe Weihnachtsgrüße 🎄</div>
+
                 <div class="seasonal-message">
-                    <span style="font-size: 1.4em; color: #fff; font-weight: 600;">${senderName}</span><br>
-                    <br>
                     wünscht eine schöne Winterzeit<br>
                     und einen guten Rutsch ins neue Jahr! ✨
                     <br><br>
-                    <small style="opacity: 0.7; font-size: 0.8em;">Kontaktdaten werden geladen...</small>
+                    <div style="margin-top: 1.5rem; font-style: italic;">
+                        Herzlichst,<br>
+                        <span style="font-size: 1.3em; font-weight: 700; color: #fff;">${senderName}</span><br>
+                        ${senderCompany ? `<span style="font-size: 1.1em; color: rgba(255,255,255,0.9);">${senderCompany}</span>` : ''}
+                    </div>
                 </div>
+
+                <button id="splash-continue-btn" class="splash-btn">
+                    Weiter zu den Kontaktdaten ➔
+                </button>
             </div>
         `;
 
         // Animiertes Lametta / Schnee
         const symbols = ['❄', '❅', '❆', '✨', '⭐'];
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < 60; i++) {
             const flake = document.createElement('div');
             flake.className = 'snowflake';
             flake.textContent = symbols[Math.floor(Math.random() * symbols.length)];
-            // Zufällige Positionierung
             flake.style.left = Math.random() * 100 + 'vw';
-            // Unterschiedliche Fallgeschwindigkeiten für Tiefe
             flake.style.animationDuration = (Math.random() * 3 + 2) + 's';
+            flake.style.opacity = Math.random();
             flake.style.fontSize = (Math.random() * 20 + 10) + 'px';
             splash.appendChild(flake);
         }
 
         document.body.appendChild(splash);
 
-        // Funktion zum Schließen und Wiederherstellen der App
+        // Button verzögert einblenden
+        setTimeout(() => {
+            const btn = document.getElementById('splash-continue-btn');
+            if (btn) {
+                btn.classList.add('visible');
+            }
+        }, 4500);
+
+        // Schließen und wiederherstellen
         const closeSplash = () => {
             splash.classList.add('fade-out');
-
-            // Nach der Fade-Out Animation (800ms)
             setTimeout(() => {
                 splash.remove();
-                // 2. Container wieder einblenden
                 if (mainContainer) {
                     mainContainer.classList.remove('hidden');
-                    // Optional: Scroll nach oben setzen
                     window.scrollTo(0, 0);
                 }
             }, 800);
         };
 
-        // Event Listener
-        splash.addEventListener('click', closeSplash);
-
-        // Auto-Close nach 4.5 Sekunden
-        setTimeout(() => {
-            if (document.body.contains(splash)) {
+        const btn = document.getElementById('splash-continue-btn');
+        if (btn) {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 closeSplash();
-            }
-        }, 4500);
+            });
+        }
     }
 
     // --- App Initialization ---
@@ -697,6 +699,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Map full field names to short keys (1-2 chars) to save space
         const shortKeys = {
             greetingName: 'g', // Greeting name for seasonal messages
+            greetingCompany: 'gc', // Greeting company for seasonal messages
             fn: 'n',      // First name
             ln: 'l',      // Last name
             org: 'o',     // Organization
@@ -752,6 +755,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Map short keys back to full field names
             const fullKeys = {
                 g: 'greetingName', // Greeting name for seasonal messages
+                gc: 'greetingCompany', // Greeting company for seasonal messages
                 n: 'fn',      // First name
                 l: 'ln',      // Last name
                 o: 'org',     // Organization
