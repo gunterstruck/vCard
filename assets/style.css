@@ -705,12 +705,12 @@ footer { padding: 1.5rem 0; text-align: center; }
    ========================================= */
 
 .snowflake {
-    position: absolute;
+    position: fixed; /* Fixed statt absolute für bessere Positionierung */
     top: -20px; /* Startet oberhalb des Bildschirms */
     color: #fff;
     user-select: none;
     pointer-events: none;
-    z-index: 1; /* Hinter dem Text */
+    z-index: 10000; /* Über dem Splash-Screen (der hat 9999) */
     text-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
     will-change: transform; /* Performance-Optimierung */
     animation-name: fall;
