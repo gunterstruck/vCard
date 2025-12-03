@@ -10,7 +10,7 @@
 const REPO_PATH = '/vCard/';
 
 // Cache version - increment to force cache update
-const CORE_CACHE_NAME = 'vcard-core-v20';
+const CORE_CACHE_NAME = 'vcard-core-v21';
 
 // Core Assets for offline availability
 const CORE_ASSETS = [
@@ -181,6 +181,7 @@ self.addEventListener('message', (event) => {
         self.skipWaiting();
     }
 });
+
 
 
 
