@@ -247,7 +247,9 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
 
-        // Animiertes Lametta / Schnee
+        document.body.appendChild(splash);
+
+        // Animiertes Lametta / Schnee - direkt an body anhängen, damit sie im Vordergrund bleiben
         const symbols = ['❄', '❅', '❆', '✨', '⭐'];
         for (let i = 0; i < 60; i++) {
             const flake = document.createElement('div');
@@ -257,10 +259,8 @@ document.addEventListener('DOMContentLoaded', () => {
             flake.style.animationDuration = (Math.random() * 3 + 2) + 's';
             flake.style.opacity = Math.random();
             flake.style.fontSize = (Math.random() * 20 + 10) + 'px';
-            splash.appendChild(flake);
+            document.body.appendChild(flake); // An body anhängen, nicht an splash
         }
-
-        document.body.appendChild(splash);
 
         // Button verzögert einblenden
         setTimeout(() => {
