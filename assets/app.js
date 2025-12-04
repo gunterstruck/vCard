@@ -217,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     und einen guten Rutsch ins neue Jahr! ✨
                     <br><br>
                     <div style="margin-top: 1.5rem; font-style: italic;">
-                        Herzlichst
+                    
                     </div>
                 </div>
 
@@ -1745,4 +1745,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
 
