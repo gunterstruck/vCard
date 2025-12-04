@@ -557,23 +557,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 continue;
             }
 
-            // FN - Full Name
-            if (line.startsWith('FN:') || line.startsWith('FN;')) {
+            // N - Structured Name (Last;First;Middle;Prefix;Suffix)
+            // Process N field FIRST as it has structured data with correct order
+            if (line.startsWith('N:') || line.startsWith('N;')) {
+                const parts = line.substring(line.indexOf(':') + 1).split(';');
+                if (parts[1]) data.fn = sanitizeValue(unescapeVCardValue(parts[1]));
+                if (parts[0]) data.ln = sanitizeValue(unescapeVCardValue(parts[0]));
+            }
+
+            // FN - Full Name (fallback only if N field didn't provide the data)
+            else if (line.startsWith('FN:') || line.startsWith('FN;')) {
                 const fullName = sanitizeValue(unescapeVCardValue(line.substring(line.indexOf(':') + 1)));
                 const parts = fullName.split(' ');
                 if (parts.length >= 2) {
-                    data.fn = parts[0];
-                    data.ln = parts.slice(1).join(' ');
+                    if (!data.fn) data.fn = parts[0];
+                    if (!data.ln) data.ln = parts.slice(1).join(' ');
                 } else {
-                    data.fn = fullName;
+                    if (!data.fn) data.fn = fullName;
                 }
-            }
-
-            // N - Structured Name (Last;First;Middle;Prefix;Suffix)
-            else if (line.startsWith('N:') || line.startsWith('N;')) {
-                const parts = line.substring(line.indexOf(':') + 1).split(';');
-                if (parts[1] && !data.fn) data.fn = sanitizeValue(unescapeVCardValue(parts[1]));
-                if (parts[0] && !data.ln) data.ln = sanitizeValue(unescapeVCardValue(parts[0]));
             }
 
             // ORG - Organization
