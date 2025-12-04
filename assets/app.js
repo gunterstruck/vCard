@@ -579,7 +579,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // ORG - Organization
             else if (line.startsWith('ORG:') || line.startsWith('ORG;')) {
-                data.org = sanitizeValue(unescapeVCardValue(line.substring(line.indexOf(':') + 1)));
+                // VCF format is ORG:Company;Department;... - we only want the company name
+                data.org = sanitizeValue(unescapeVCardValue(line.substring(line.indexOf(':') + 1)).split(';')[0]);
             }
 
             // TITLE - Job Title
