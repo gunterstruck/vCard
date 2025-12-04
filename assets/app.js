@@ -879,15 +879,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (el) fragment.appendChild(el);
         };
 
-        // Display contact data
-        const fullName = [data.fn, data.ln].filter(Boolean).join(' ');
-        if (fullName) {
-            const nameHeader = document.createElement('h3');
-            nameHeader.textContent = fullName;
-            nameHeader.style.marginBottom = '1rem';
-            fragment.appendChild(nameHeader);
-        }
-
+        // Display contact data - show first name and last name as separate fields
+        addPair('fn', data.fn);
+        addPair('ln', data.ln);
         addPair('org', data.org);
         addPair('title', data.title);
         addPair('tel', data.tel);
