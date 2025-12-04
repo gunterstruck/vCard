@@ -204,22 +204,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const mainContainer = document.querySelector('.container');
         if (mainContainer) mainContainer.classList.add('hidden');
 
-        // Name ermitteln
-        let senderName = "Der Inhaber dieser Karte";
-        if (data?.greetingName) {
-            senderName = data.greetingName;
-        } else if (data?.fn) {
-            senderName = data.fn + (data.ln ? ` ${data.ln}` : '');
-        }
-
-        // Firma ermitteln
-        let senderCompany = '';
-        if (data?.greetingCompany) {
-            senderCompany = data.greetingCompany;
-        } else if (data?.org) {
-            senderCompany = data.org;
-        }
-
         // HTML erstellen
         const splash = document.createElement('div');
         splash.id = 'seasonal-splash';
@@ -229,15 +213,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="seasonal-title">🎄 Liebe Weihnachtsgrüße 🎄</div>
 
                 <div class="seasonal-message">
-                    Das Siemens Team <br>
-                    <br>
-                    wünscht eine schöne Weihnachtszeit<br>
+                    Wir wünschen eine schöne Weihnachtszeit<br>
                     und einen guten Rutsch ins neue Jahr! ✨
                     <br><br>
                     <div style="margin-top: 1.5rem; font-style: italic;">
-                        Herzlichst,<br>
-                        <span style="font-size: 1.3em; font-weight: 700; color: #fff;">${senderName}</span><br>
-                        ${senderCompany ? `<span style="font-size: 1.1em; color: rgba(255,255,255,0.9);">${senderCompany}</span>` : ''}
+                        Herzlichst
                     </div>
                 </div>
 
@@ -700,8 +680,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Map full field names to short keys (1-2 chars) to save space
         const shortKeys = {
-            greetingName: 'g', // Greeting name for seasonal messages
-            greetingCompany: 'gc', // Greeting company for seasonal messages
             fn: 'n',      // First name
             ln: 'l',      // Last name
             org: 'o',     // Organization
@@ -756,8 +734,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Map short keys back to full field names
             const fullKeys = {
-                g: 'greetingName', // Greeting name for seasonal messages
-                gc: 'greetingCompany', // Greeting company for seasonal messages
                 n: 'fn',      // First name
                 l: 'ln',      // Last name
                 o: 'org',     // Organization
