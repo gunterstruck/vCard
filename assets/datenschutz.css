@@ -22,9 +22,51 @@ h1 {
     word-wrap: break-word;
 }
 
+h2 {
+    font-size: 1.8rem;
+}
+
 p, li {
     font-size: 1rem;
     color: #495057;
+}
+
+/* Mobile Optimierung für iOS und kleine Bildschirme */
+@media screen and (max-width: 768px) {
+    h1 {
+        font-size: 1.75rem;
+    }
+
+    h2 {
+        font-size: 1.3rem;
+    }
+
+    p, li {
+        font-size: 0.95rem;
+    }
+
+    .container {
+        padding: 1.5rem 1.25rem;
+    }
+
+    body {
+        padding: 1rem;
+    }
+}
+
+/* Extra kleine Bildschirme (iPhone SE, etc.) */
+@media screen and (max-width: 400px) {
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    h2 {
+        font-size: 1.2rem;
+    }
+
+    p, li {
+        font-size: 0.9rem;
+    }
 }
 
 a {
