@@ -31,7 +31,7 @@
     "privacyPolicyLink": "Política de privacidad",
     "checkForUpdate": "Buscar actualizaciones",
     "clearCache": "Borrar caché",
-    "nfcFallback": "Web NFC no es compatible con este dispositivo.",
+    "nfcFallback": "Web NFC no es compatible con este dispositivo. Nota: La escritura de etiquetas NFC es posible en Android usando el navegador Chrome.",
     "updateAvailable": "¡Hay una nueva actualización disponible!",
     "updateReload": "Recargar",
     "placeholderRead": "Por favor, acerque una etiqueta NFC a su dispositivo para mostrar los datos de contacto.",
