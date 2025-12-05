@@ -65,7 +65,7 @@
         "cacheClearConfirm": "Möchten Sie wirklich alle zwischengespeicherten Daten löschen?",
         "installSuccess": "App erfolgreich installiert!",
         "installAccepted": "Installation wird vorbereitet...",
-        "iosEditNotice": "💡 Hinweis: Zum Bearbeiten der Daten auf dem NFC-Tag benötigen Sie ein Android-Gerät oder den Chrome-Browser."
+        "iosEditNotice": "💡 Hinweis: Zum Bearbeiten der Daten auf dem NFC-Tag benötigen Sie ein Android-Gerät."
     },
     "errors": {
         "NotAllowedError": "Die Berechtigung für NFC wurde verweigert.",

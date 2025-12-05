@@ -65,7 +65,7 @@
         "cacheClearConfirm": "¿Realmente desea eliminar todos los datos en caché?",
         "installSuccess": "¡Aplicación instalada con éxito!",
         "installAccepted": "Preparando instalación...",
-        "iosEditNotice": "💡 Nota: Para editar los datos en la etiqueta NFC, necesita un dispositivo Android o el navegador Chrome."
+        "iosEditNotice": "💡 Nota: Para editar los datos en la etiqueta NFC, necesita un dispositivo Android."
     },
     "errors": {
         "NotAllowedError": "Se denegó el permiso para NFC.",
