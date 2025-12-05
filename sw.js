@@ -10,7 +10,7 @@
 const REPO_PATH = '/vCard/';
 
 // Cache version - increment to force cache update
-const CORE_CACHE_NAME = 'vcard-core-v27';
+const CORE_CACHE_NAME = 'vcard-core-v28';
 
 // Core Assets for offline availability
 const CORE_ASSETS = [

@@ -1437,6 +1437,116 @@ document.addEventListener('DOMContentLoaded', () => {
         showMessage(t('messages.copySuccess'), 'ok');
     }
 
+    /**
+     * Shares or downloads a vCard file with improved compatibility
+     * Tries multiple MIME types and strategies for better iOS/Android support
+     * @param {Object} data - Contact data object
+     * @param {string} filenamePrefix - Prefix for the filename
+     */
+    async function shareOrDownloadVcf(data, filenamePrefix) {
+        // 1. Validation
+        if (!data || Object.keys(data).length === 0) {
+            showMessage(t('errors.noDataToSave') || 'Keine Daten vorhanden', 'err');
+            return;
+        }
+
+        // 2. Generate vCard string & blob
+        const vcardString = createVCardString(data);
+        const vcardByteSize = new TextEncoder().encode(vcardString).length;
+
+        // Generate clean filename
+        let filename = (filenamePrefix || 'kontakt').replace(/[^a-z0-9äöüß_\-]/gi, '_');
+        if (!filename.toLowerCase().endsWith('.vcf')) filename += '.vcf';
+
+        // Log size info
+        addLogEntry(`VCF-Vorbereitung: ${vcardByteSize} Bytes`, 'info');
+
+        // 3. Try Web Share API (sharing) - only available over HTTPS
+        if (navigator.share && navigator.canShare) {
+            try {
+                // Attempt 1: Standard 'text/vcard'
+                const file = new File([vcardString], filename, { type: 'text/vcard' });
+
+                // Check if we can share this file type
+                if (navigator.canShare({ files: [file] })) {
+                    addLogEntry('Versuche Share API (Standard text/vcard)...', 'info');
+                    console.log('[Share] Attempting standard text/vcard');
+
+                    try {
+                        await navigator.share({
+                            files: [file],
+                            title: 'Kontakt teilen'
+                        });
+                        showMessage(t('messages.saveSuccess') + ` (${vcardByteSize} Bytes)`, 'ok');
+                        addLogEntry('Erfolgreich geteilt (text/vcard)', 'ok');
+                        return; // Success!
+                    } catch (shareError) {
+                        // User cancelled - this is OK
+                        if (shareError.name === 'AbortError') {
+                            addLogEntry('Teilen abgebrochen', 'info');
+                            return;
+                        }
+                        console.warn('[Share] Standard share failed:', shareError);
+                    }
+                } else {
+                    console.log('[Share] Browser reports text/vcard not shareable');
+                }
+
+                // Attempt 2: Legacy 'text/x-vcard' (for older Android/Windows)
+                const fileLegacy = new File([vcardString], filename, { type: 'text/x-vcard' });
+                if (navigator.canShare({ files: [fileLegacy] })) {
+                    addLogEntry('Versuche Share API (Legacy text/x-vcard)...', 'info');
+                    console.log('[Share] Attempting legacy text/x-vcard');
+
+                    try {
+                        await navigator.share({
+                            files: [fileLegacy],
+                            title: 'Kontakt teilen'
+                        });
+                        showMessage(t('messages.saveSuccess') + ` (${vcardByteSize} Bytes)`, 'ok');
+                        addLogEntry('Erfolgreich geteilt (text/x-vcard)', 'ok');
+                        return; // Success!
+                    } catch (retryError) {
+                        // User cancelled - this is OK
+                        if (retryError.name === 'AbortError') {
+                            addLogEntry('Teilen abgebrochen', 'info');
+                            return;
+                        }
+                        console.warn('[Share] Legacy share also failed:', retryError);
+                    }
+                } else {
+                    console.log('[Share] Browser reports text/x-vcard not shareable');
+                }
+
+            } catch (error) {
+                console.warn('[Share] Web Share setup failed:', error);
+            }
+        } else {
+            // Debug info: Why doesn't sharing work?
+            if (window.location.protocol === 'http:') {
+                console.warn('[Share] Web Share API requires HTTPS');
+                addLogEntry('Teilen nicht möglich: Kein HTTPS', 'info');
+            } else {
+                console.log('[Share] Web Share API not available');
+            }
+        }
+
+        // 4. Fallback: Traditional download (when sharing fails or on Desktop)
+        addLogEntry('Nutze Download-Fallback', 'info');
+        const blob = new Blob([vcardString], { type: 'text/vcard;charset=utf-8' });
+        const url = BlobUrlManager.create(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => BlobUrlManager.revoke(url), CONFIG.URL_REVOKE_DELAY);
+
+        showMessage(t('messages.saveSuccess') + ` (${vcardByteSize} Bytes)`, 'ok');
+        addLogEntry('vCard als Download gespeichert', 'ok');
+    }
+
     async function saveFormAsVcf() {
         // Validate form data before saving
         const data = getFormData();
@@ -1481,7 +1591,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Generate vCard string
+        // Generate vCard string for size check
         const vcardString = createVCardString(data);
         const vcardByteSize = new TextEncoder().encode(vcardString).length;
 
@@ -1493,86 +1603,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Log successful validation with size info
-        addLogEntry(`VCF-Speicherung: ${vcardByteSize} Bytes (Limit: ${CONFIG.NTAG216_CAPACITY} Bytes)`, 'ok');
+        // Generate filename
+        const filename = [data.fn, data.ln].filter(Boolean).join('_') || 'kontakt';
 
-        // Create blob and file
-        const blob = new Blob([vcardString], { type: 'text/vcard' });
-        let filename = [data.fn, data.ln].filter(Boolean).join('_') || 'contact';
-        // Force .vcf extension
-        if (!filename.toLowerCase().endsWith('.vcf')) {
-            filename += '.vcf';
-        }
-
-        // Try Web Share API first (works on iOS and modern Android)
-        if (navigator.share) {
-            try {
-                // Create file with multiple MIME type attempts for better compatibility
-                const file = new File([blob], filename, { type: 'text/vcard' });
-
-                // Log what we're attempting
-                console.log('[Share] Attempting Web Share API');
-                addLogEntry('Versuche Web Share API...', 'info');
-
-                // Check if we can share (but don't rely on it completely)
-                const canShareFiles = navigator.canShare && navigator.canShare({ files: [file] });
-                console.log('[Share] canShare result:', canShareFiles);
-
-                // Try to share even if canShare is false - iOS sometimes reports false but works anyway
-                if (canShareFiles || isIOS() || navigator.userAgent.includes('Android')) {
-                    try {
-                        await navigator.share({
-                            files: [file],
-                            title: 'Kontakt speichern',
-                            text: 'Digitale Visitenkarte'
-                        });
-                        showMessage(t('messages.saveSuccess') + ` (${vcardByteSize} Bytes)`, 'ok');
-                        addLogEntry('vCard via Web Share API geteilt', 'ok');
-                        return; // Success!
-                    } catch (shareError) {
-                        console.log('[Share] Share attempt failed:', shareError.name, shareError.message);
-
-                        // User cancelled - this is OK, don't fall back to download
-                        if (shareError.name === 'AbortError') {
-                            addLogEntry('Teilen abgebrochen', 'info');
-                            return;
-                        }
-
-                        // If share failed for other reasons, try without text parameter (iOS compatibility)
-                        console.log('[Share] Retrying without text parameter...');
-                        try {
-                            await navigator.share({ files: [file] });
-                            showMessage(t('messages.saveSuccess') + ` (${vcardByteSize} Bytes)`, 'ok');
-                            addLogEntry('vCard via Web Share API geteilt (Retry)', 'ok');
-                            return;
-                        } catch (retryError) {
-                            if (retryError.name === 'AbortError') {
-                                addLogEntry('Teilen abgebrochen', 'info');
-                                return;
-                            }
-                            console.warn('[Share] Retry also failed:', retryError);
-                            addLogEntry(`Web Share fehlgeschlagen: ${retryError.message}`, 'info');
-                        }
-                    }
-                }
-            } catch (error) {
-                console.warn('[Share] Web Share setup failed:', error);
-                addLogEntry('Web Share nicht verfügbar, verwende Download', 'info');
-            }
-        }
-
-        // Fallback: Traditional download (for Desktop/Android)
-        const url = BlobUrlManager.create(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => {
-            BlobUrlManager.revoke(url);
-        }, CONFIG.URL_REVOKE_DELAY);
-        showMessage(t('messages.saveSuccess') + ` (${vcardByteSize} Bytes)`, 'ok');
+        // Use improved share/download function
+        await shareOrDownloadVcf(data, filename);
     }
 
     function loadVcfIntoForm(event) {
@@ -1783,7 +1818,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Generate vCard string
+        // Generate vCard string for size check
         const vcardString = createVCardString(data);
         const vcardByteSize = new TextEncoder().encode(vcardString).length;
 
@@ -1795,87 +1830,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Log successful validation with size info
-        addLogEntry(`VCF-Speicherung (gescannt): ${vcardByteSize} Bytes (Limit: ${CONFIG.NTAG216_CAPACITY} Bytes)`, 'ok');
+        // Generate filename
+        const filename = [data.fn, data.ln].filter(Boolean).join('_') || 'scan';
 
-        // Create blob and file
-        const blob = new Blob([vcardString], { type: 'text/vcard' });
-        let filename = [data.fn, data.ln].filter(Boolean).join('_') || 'scanned_contact';
-        // Force .vcf extension
-        if (!filename.toLowerCase().endsWith('.vcf')) {
-            filename += '.vcf';
-        }
-
-        // Try Web Share API first (works on iOS and modern Android)
-        if (navigator.share) {
-            try {
-                // Create file with multiple MIME type attempts for better compatibility
-                const file = new File([blob], filename, { type: 'text/vcard' });
-
-                // Log what we're attempting
-                console.log('[Share] Attempting Web Share API (scanned data)');
-                addLogEntry('Versuche Web Share API...', 'info');
-
-                // Check if we can share (but don't rely on it completely)
-                const canShareFiles = navigator.canShare && navigator.canShare({ files: [file] });
-                console.log('[Share] canShare result:', canShareFiles);
-
-                // Try to share even if canShare is false - iOS sometimes reports false but works anyway
-                if (canShareFiles || isIOS() || navigator.userAgent.includes('Android')) {
-                    try {
-                        await navigator.share({
-                            files: [file],
-                            title: 'Kontakt speichern',
-                            text: 'Digitale Visitenkarte'
-                        });
-                        showMessage(t('messages.saveSuccess') + ` (${vcardByteSize} Bytes)`, 'ok');
-                        addLogEntry('vCard via Web Share API geteilt', 'ok');
-                        return; // Success!
-                    } catch (shareError) {
-                        console.log('[Share] Share attempt failed:', shareError.name, shareError.message);
-
-                        // User cancelled - this is OK, don't fall back to download
-                        if (shareError.name === 'AbortError') {
-                            addLogEntry('Teilen abgebrochen', 'info');
-                            return;
-                        }
-
-                        // If share failed for other reasons, try without text parameter (iOS compatibility)
-                        console.log('[Share] Retrying without text parameter...');
-                        try {
-                            await navigator.share({ files: [file] });
-                            showMessage(t('messages.saveSuccess') + ` (${vcardByteSize} Bytes)`, 'ok');
-                            addLogEntry('vCard via Web Share API geteilt (Retry)', 'ok');
-                            return;
-                        } catch (retryError) {
-                            if (retryError.name === 'AbortError') {
-                                addLogEntry('Teilen abgebrochen', 'info');
-                                return;
-                            }
-                            console.warn('[Share] Retry also failed:', retryError);
-                            addLogEntry(`Web Share fehlgeschlagen: ${retryError.message}`, 'info');
-                        }
-                    }
-                }
-            } catch (error) {
-                console.warn('[Share] Web Share setup failed:', error);
-                addLogEntry('Web Share nicht verfügbar, verwende Download', 'info');
-            }
-        }
-
-        // Fallback: Traditional download (for Desktop/Android)
-        const url = BlobUrlManager.create(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => {
-            BlobUrlManager.revoke(url);
-        }, CONFIG.URL_REVOKE_DELAY);
-        showMessage(t('messages.saveSuccess') + ` (${vcardByteSize} Bytes)`, 'ok');
+        // Use improved share/download function
+        await shareOrDownloadVcf(data, filename);
     }
 
     /**
