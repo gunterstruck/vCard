@@ -31,7 +31,7 @@
     "privacyPolicyLink": "Datenschutzerklärung",
     "checkForUpdate": "Auf Updates prüfen",
     "clearCache": "Cache löschen",
-    "nfcFallback": "Web NFC wird auf diesem Gerät nicht unterstützt.",
+    "nfcFallback": "Web NFC wird auf diesem Gerät nicht unterstützt. Hinweis: Das Schreiben von NFC-Tags ist unter Android mit dem Chrome Browser möglich.",
     "updateAvailable": "Ein neues Update ist verfügbar!",
     "updateReload": "Neu laden",
     "placeholderRead": "Bitte halten Sie einen NFC-Tag an Ihr Gerät, um die Kontaktdaten anzuzeigen.",
