@@ -623,6 +623,16 @@ footer { padding: 1.5rem 0; text-align: center; }
 
     #legal-info { padding: 1.25rem; }
     .legal-content { font-size: 0.85rem; line-height: 1.6; }
+
+    .seasonal-title {
+        font-size: 1.4rem; /* Smaller font size for mobile */
+        letter-spacing: 0.3px;
+    }
+
+    .seasonal-content {
+        padding: 1.5rem;
+        width: 300px;
+    }
 }
 
 /* =========================================
@@ -685,6 +695,9 @@ footer { padding: 1.5rem 0; text-align: center; }
     margin-bottom: 1.5rem;
     text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
     letter-spacing: 0.5px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
 }
 
 .seasonal-message {
