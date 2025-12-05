@@ -654,7 +654,7 @@ footer { padding: 1.5rem 0; text-align: center; }
     .legal-content { font-size: 0.85rem; line-height: 1.6; }
 
     .seasonal-title {
-        font-size: 1.0rem; /* Optimized for iOS Essential to prevent text wrapping */
+        font-size: 0.9rem; /* Optimized for iOS Essential to prevent text wrapping */
         letter-spacing: 0.1px;
     }
 
