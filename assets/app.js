@@ -436,6 +436,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function setupEventListeners() {
+        // 1. Basis-UI (Tabs, Theme, etc.) - IMMER aktiv
         if(tabsContainer) tabsContainer.addEventListener('click', handleTabClick);
         if(themeSwitcher) themeSwitcher.addEventListener('click', handleThemeChange);
         if(nfcStatusBadge) nfcStatusBadge.addEventListener('click', handleNfcAction);
@@ -443,32 +444,39 @@ document.addEventListener('DOMContentLoaded', () => {
         if(clearCacheBtn) clearCacheBtn.addEventListener('click', handleClearCache);
         if(installBtn) installBtn.addEventListener('click', showInstallPrompt);
 
-        if (copyToFormBtn) {
-            copyToFormBtn.addEventListener('click', populateFormFromScan);
-        }
-
-        if(saveScannedBtn) saveScannedBtn.addEventListener('click', saveScannedDataAsVcf);
+        // 2. Core-Features (Speichern & Teilen & Kopieren) - IMMER aktiv (auch iOS!)
+        // iOS-User können so Daten scannen, bearbeiten und exportieren
+        if(shareVcfBtn) shareVcfBtn.addEventListener('click', shareFormAsVcf);
         if(saveVcfBtn) saveVcfBtn.addEventListener('click', saveFormAsVcf);
+        if(shareScannedBtn) shareScannedBtn.addEventListener('click', shareScannedDataAsVcf);
+        if(saveScannedBtn) saveScannedBtn.addEventListener('click', saveScannedDataAsVcf);
+        
+        // Auch "Copy to Form" ist auf iOS nützlich (zum Bearbeiten gescannter Daten)
+        if (copyToFormBtn) copyToFormBtn.addEventListener('click', populateFormFromScan);
 
-        if (!isIOS()) {
-            if(shareScannedBtn) shareScannedBtn.addEventListener('click', shareScannedDataAsVcf);
-            if(shareVcfBtn) shareVcfBtn.addEventListener('click', shareFormAsVcf);
-            if(loadVcfInput) loadVcfInput.addEventListener('change', loadVcfIntoForm);
-            if (loadVcfLabel && loadVcfInput) {
-                loadVcfLabel.addEventListener('click', () => {
-                    loadVcfInput.click();
-                });
-            }
-            if(importContactBtn) importContactBtn.addEventListener('click', importFromContacts);
-        }
-
+        // 3. Formular-Logik - IMMER aktiv
         if(form) {
             form.addEventListener('input', debouncedUpdatePayload);
             form.addEventListener('change', updatePayloadOnChange);
         }
         if(reloadButton) reloadButton.addEventListener('click', handleReloadClick);
 
-        // Check Contact Picker API support
+        // 4. Plattform-Spezifische Features (Nur Nicht-iOS)
+        // Diese APIs sind auf iOS oft buggy oder nicht vorhanden
+        if (!isIOS()) {
+            // Datei-Upload (Laden)
+            if(loadVcfInput) loadVcfInput.addEventListener('change', loadVcfIntoForm);
+            if (loadVcfLabel && loadVcfInput) {
+                loadVcfLabel.addEventListener('click', () => {
+                    loadVcfInput.click();
+                });
+            }
+            
+            // Native Kontakt-Import API (meist nur Android Chrome)
+            if(importContactBtn) importContactBtn.addEventListener('click', importFromContacts);
+        }
+
+        // Feature Detection statt reiner OS-Weiche
         checkContactPickerSupport();
     }
 
