@@ -65,7 +65,7 @@
         "cacheClearConfirm": "Voulez-vous vraiment supprimer toutes les données en cache?",
         "installSuccess": "Application installée avec succès!",
         "installAccepted": "Préparation de l'installation...",
-        "iosEditNotice": "💡 Remarque: Pour modifier les données sur le tag NFC, vous avez besoin d'un appareil Android ou du navigateur Chrome."
+        "iosEditNotice": "💡 Remarque: Pour modifier les données sur le tag NFC, vous avez besoin d'un appareil Android."
     },
     "errors": {
         "NotAllowedError": "La permission NFC a été refusée.",
