@@ -105,10 +105,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const tabContents = document.querySelectorAll('.tab-content');
     const nfcStatusBadge = document.getElementById('nfc-status-badge');
     const copyToFormBtn = document.getElementById('copy-to-form-btn');
+    const shareVcfBtn = document.getElementById('share-vcf-btn');
     const saveVcfBtn = document.getElementById('save-vcf-btn');
     const loadVcfInput = document.getElementById('load-vcf-input');
     const loadVcfLabel = document.getElementById('load-vcf-label');
     const importContactBtn = document.getElementById('import-contact-btn');
+    const shareScannedBtn = document.getElementById('share-scanned-btn');
     const saveScannedBtn = document.getElementById('save-scanned-btn');
     const nfcFallback = document.getElementById('nfc-fallback');
     const messageBanner = document.getElementById('message-banner');
@@ -445,7 +447,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (copyToFormBtn) {
                 copyToFormBtn.addEventListener('click', populateFormFromScan);
             }
+            if(shareScannedBtn) shareScannedBtn.addEventListener('click', shareScannedDataAsVcf);
             if(saveScannedBtn) saveScannedBtn.addEventListener('click', saveScannedDataAsVcf);
+            if(shareVcfBtn) shareVcfBtn.addEventListener('click', shareFormAsVcf);
             if(saveVcfBtn) saveVcfBtn.addEventListener('click', saveFormAsVcf);
             if(loadVcfInput) loadVcfInput.addEventListener('change', loadVcfIntoForm);
             if (loadVcfLabel && loadVcfInput) {
@@ -1545,6 +1549,113 @@ document.addEventListener('DOMContentLoaded', () => {
 
         showMessage(t('messages.saveSuccess') + ` (${vcardByteSize} Bytes)`, 'ok');
         addLogEntry('vCard als Download gespeichert', 'ok');
+    }
+
+    /**
+     * Shares a vCard file without download fallback
+     * Only attempts to share via Web Share API
+     * @param {Object} data - Contact data object
+     * @param {string} filenamePrefix - Prefix for the filename
+     */
+    async function shareVcf(data, filenamePrefix) {
+        // 1. Validation
+        if (!data || Object.keys(data).length === 0) {
+            showMessage(t('errors.noDataToSave') || 'Keine Daten vorhanden', 'err');
+            return;
+        }
+
+        // 2. Generate vCard string & filename
+        const vcardString = createVCardString(data);
+        const vcardByteSize = new TextEncoder().encode(vcardString).length;
+
+        let filename = (filenamePrefix || 'kontakt').replace(/[^a-z0-9äöüß_\-]/gi, '_');
+        if (!filename.toLowerCase().endsWith('.vcf')) filename += '.vcf';
+
+        // 3. Check if Web Share API is available
+        if (!navigator.share) {
+            showMessage(
+                'Teilen wird von diesem Browser nicht unterstützt. ' +
+                'Bitte öffnen Sie die Seite in Chrome oder einem aktuellen Android-Browser.',
+                'err'
+            );
+            return;
+        }
+
+        // 4. Attempt A: Share as file (Web Share Level 2)
+        // Try sharing without canShare check - just attempt it directly
+        const file = new File([vcardString], filename, { type: 'text/vcard' });
+
+        try {
+            await navigator.share({
+                files: [file],
+                title: 'Kontakt teilen',
+                text: 'Hier ist meine digitale Visitenkarte.'
+            });
+
+            addLogEntry('vCard wurde erfolgreich als Datei geteilt.', 'info');
+            showMessage(t('messages.saveSuccess') || 'Kontakt wurde geteilt.', 'ok');
+            return;
+        } catch (error) {
+            // User cancelled - this is OK, exit silently
+            if (error.name === 'AbortError') {
+                addLogEntry('Teilen vom Nutzer abgebrochen', 'info');
+                return;
+            }
+            console.warn('[Share] Teilen mit Datei fehlgeschlagen:', error);
+            addLogEntry(`[Share] Dateien teilen nicht unterstützt: ${error.message}`, 'warn');
+        }
+
+        // 5. Attempt B: Fallback - share vCard as text
+        // (for browsers that don't support file sharing)
+        try {
+            await navigator.share({
+                title: 'Kontakt teilen',
+                text: vcardString
+            });
+
+            addLogEntry('vCard wurde als Text geteilt.', 'info');
+            showMessage(t('messages.saveSuccess') || 'Kontakt wurde geteilt.', 'ok');
+            return;
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                addLogEntry('Teilen (Text) vom Nutzer abgebrochen', 'info');
+                return;
+            }
+            console.warn('[Share] Teilen als Text fehlgeschlagen:', error);
+        }
+
+        // 6. If we reach here: neither file nor text sharing worked
+        showMessage(
+            'Das Teilen der digitalen Visitenkarte wird von diesem Browser oder Gerät nicht unterstützt.',
+            'err'
+        );
+    }
+
+    /**
+     * Shares the form data as vCard (only sharing, no download)
+     */
+    async function shareFormAsVcf() {
+        const data = getFormData();
+        const fullName = [data.fn, data.ln].filter(Boolean).join(' ').trim();
+        const filenamePrefix = fullName || 'kontakt';
+
+        await shareVcf(data, filenamePrefix);
+    }
+
+    /**
+     * Shares the scanned data as vCard (only sharing, no download)
+     */
+    async function shareScannedDataAsVcf() {
+        if (!appState.scannedDataObject) {
+            showMessage(t('messages.noDataToSave') || 'Keine Daten zum Teilen vorhanden', 'err');
+            return;
+        }
+
+        const data = appState.scannedDataObject;
+        const fullName = [data.fn, data.ln].filter(Boolean).join(' ').trim();
+        const filenamePrefix = fullName || 'scan';
+
+        await shareVcf(data, filenamePrefix);
     }
 
     async function saveFormAsVcf() {
