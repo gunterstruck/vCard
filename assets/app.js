@@ -105,12 +105,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const tabContents = document.querySelectorAll('.tab-content');
     const nfcStatusBadge = document.getElementById('nfc-status-badge');
     const copyToFormBtn = document.getElementById('copy-to-form-btn');
-    const shareVcfBtn = document.getElementById('share-vcf-btn');
     const saveVcfBtn = document.getElementById('save-vcf-btn');
     const loadVcfInput = document.getElementById('load-vcf-input');
     const loadVcfLabel = document.getElementById('load-vcf-label');
     const importContactBtn = document.getElementById('import-contact-btn');
-    const shareScannedBtn = document.getElementById('share-scanned-btn');
     const saveScannedBtn = document.getElementById('save-scanned-btn');
     const nfcFallback = document.getElementById('nfc-fallback');
     const messageBanner = document.getElementById('message-banner');
@@ -446,19 +444,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- 2. Kern-Funktionen (Jetzt auch für iOS freigeschaltet) ---
         // Diese Aktionen führen rein lokale Logik oder Downloads aus, die iOS mittlerweile handhaben kann.
-        
+
         // "Ins Formular kopieren" (Rein DOM-basiert, sicher für iOS)
         if (copyToFormBtn)  copyToFormBtn.addEventListener('click', populateFormFromScan);
-        
+
         // "Kontakt speichern" (Formular -> Datei)
         if (saveVcfBtn)     saveVcfBtn.addEventListener('click', saveFormAsVcf);
-        
+
         // "Kontakt speichern" (Scan -> Datei)
         if (saveScannedBtn) saveScannedBtn.addEventListener('click', saveScannedDataAsVcf);
-
-        // Optional: Teilen-Buttons auch freigeben, falls die shareVcfUniversal Funktion implementiert wurde
-        if (shareVcfBtn)     shareVcfBtn.addEventListener('click', shareFormAsVcf);
-        if (shareScannedBtn) shareScannedBtn.addEventListener('click', shareScannedDataAsVcf);
 
         // --- 3. Plattform-Spezifische Einschränkungen (Nur Nicht-iOS) ---
         // Dateisystem-Zugriff (Upload) und Kontakt-Picker sind auf iOS WebKit oft problematisch oder nicht vorhanden.
