@@ -68,7 +68,7 @@
     },
     "errors": {
         "NotAllowedError": "Se denegó el permiso para NFC.",
-        "NotSupportedError": "Web NFC no es compatible con este dispositivo.",
+        "NotSupportedError": "Web NFC no es compatible con este dispositivo. Nota: La escritura de etiquetas NFC es posible en Android usando el navegador Chrome.",
         "NotFoundError": "No se encontró ninguna etiqueta NFC.",
         "NotReadableError": "No se pudo leer la etiqueta NFC.",
         "NetworkError": "Error de red. Por favor, verifique su conexión.",

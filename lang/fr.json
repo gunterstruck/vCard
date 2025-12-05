@@ -68,7 +68,7 @@
     },
     "errors": {
         "NotAllowedError": "La permission NFC a été refusée.",
-        "NotSupportedError": "Le NFC Web n'est pas supporté sur cet appareil.",
+        "NotSupportedError": "Le NFC Web n'est pas supporté sur cet appareil. Remarque: L'écriture de tags NFC est possible sous Android avec le navigateur Chrome.",
         "NotFoundError": "Aucun tag NFC trouvé.",
         "NotReadableError": "Le tag NFC n'a pas pu être lu.",
         "NetworkError": "Erreur réseau. Veuillez vérifier votre connexion.",
