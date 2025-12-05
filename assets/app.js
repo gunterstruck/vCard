@@ -1554,31 +1554,26 @@ document.addEventListener('DOMContentLoaded', () => {
     /**
      * Shares a vCard file without download fallback
      * Only attempts to share via Web Share API
-     * Enhanced with detailed debug alerts for troubleshooting
+     * CRITICAL: navigator.share() must be called IMMEDIATELY to preserve user gesture
      * @param {Object} data - Contact data object
      * @param {string} filenamePrefix - Prefix for the filename
      */
     async function shareVcf(data, filenamePrefix) {
-        // 1. Validation
+        // 1. Quick validation
         if (!data || Object.keys(data).length === 0) {
             showMessage(t('errors.noDataToSave') || 'Keine Daten vorhanden', 'err');
             return;
         }
 
-        // 2. Generate vCard string & filename
+        // 2. Prepare data SYNCHRONOUSLY (no async, no delays, no logging!)
         const vcardString = createVCardString(data);
         const vcardByteSize = new TextEncoder().encode(vcardString).length;
-
         let filename = (filenamePrefix || 'kontakt').replace(/[^a-z0-9äöüß_\-]/gi, '_');
         if (!filename.toLowerCase().endsWith('.vcf')) filename += '.vcf';
 
-        // 3. Check if Web Share API is available
+        // 3. IMMEDIATELY call navigator.share() - NO code before this!
+        // This preserves the user gesture context
         if (!navigator.share) {
-            const debugInfo = `DEBUG: navigator.share ist NICHT verfügbar!\n\n` +
-                `Browser: ${navigator.userAgent}\n` +
-                `Protokoll: ${window.location.protocol}\n` +
-                `In-App Browser? Öffnen Sie die Seite in Chrome über "Im Browser öffnen"`;
-            alert(debugInfo);
             showMessage(
                 'Teilen wird von diesem Browser nicht unterstützt. ' +
                 'Bitte öffnen Sie die Seite in Chrome.',
@@ -1587,87 +1582,36 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        addLogEntry('✓ navigator.share ist verfügbar', 'info');
-
-        // 4. Attempt A: Share as file (Web Share Level 2)
+        // Create file and share IMMEDIATELY
         const file = new File([vcardString], filename, { type: 'text/vcard' });
 
-        // Check if browser supports file sharing
-        let canShareFiles = false;
-        if (navigator.canShare) {
-            canShareFiles = navigator.canShare({ files: [file] });
-            addLogEntry(`canShare({ files }): ${canShareFiles}`, 'info');
-        } else {
-            addLogEntry('navigator.canShare ist nicht verfügbar', 'info');
-        }
-
         try {
+            // THIS MUST BE THE FIRST PRIVILEGED ACTION
             await navigator.share({
                 files: [file],
-                title: 'Kontakt teilen',
-                text: 'Hier ist meine digitale Visitenkarte.'
+                title: 'Kontakt teilen'
             });
 
-            addLogEntry('vCard wurde erfolgreich als Datei geteilt.', 'ok');
-            showMessage(t('messages.saveSuccess') || 'Kontakt wurde geteilt.', 'ok');
+            // Success - logging AFTER share completes
+            showMessage(t('messages.saveSuccess') + ` (${vcardByteSize} Bytes)`, 'ok');
+            addLogEntry('vCard erfolgreich geteilt', 'ok');
             return;
         } catch (error) {
-            // User cancelled - this is OK, exit silently
+            // User cancelled - exit silently
             if (error.name === 'AbortError') {
-                addLogEntry('Teilen vom Nutzer abgebrochen', 'info');
+                addLogEntry('Teilen abgebrochen', 'info');
                 return;
             }
 
-            // Debug: Show detailed error for file sharing
-            const fileErrorMsg = `DEBUG: Datei-Teilen fehlgeschlagen\n\n` +
-                `Fehlertyp: ${error.name}\n` +
-                `Fehlermeldung: ${error.message}\n` +
-                `canShare Files: ${canShareFiles}\n\n` +
-                `Versuche nun Text-Teilen als Fallback...`;
-            alert(fileErrorMsg);
-
-            console.warn('[Share] Teilen mit Datei fehlgeschlagen:', error);
-            addLogEntry(`[Share] Dateien teilen gescheitert: ${error.name} - ${error.message}`, 'warn');
+            // Log error (after failed attempt)
+            console.warn('[Share] Fehler:', error);
+            addLogEntry(`Teilen fehlgeschlagen: ${error.name}`, 'err');
+            showMessage(
+                'Das Teilen ist fehlgeschlagen. ' +
+                'Bitte versuchen Sie es erneut oder öffnen Sie die Seite in Chrome.',
+                'err'
+            );
         }
-
-        // 5. Attempt B: Fallback - share vCard as text
-        // (for browsers that don't support file sharing)
-        try {
-            await navigator.share({
-                title: 'Kontakt teilen',
-                text: vcardString
-            });
-
-            addLogEntry('vCard wurde als Text geteilt.', 'ok');
-            showMessage(t('messages.saveSuccess') || 'Kontakt wurde geteilt.', 'ok');
-            return;
-        } catch (error) {
-            if (error.name === 'AbortError') {
-                addLogEntry('Teilen (Text) vom Nutzer abgebrochen', 'info');
-                return;
-            }
-
-            // Debug: Show detailed error for text sharing
-            const textErrorMsg = `DEBUG: Text-Teilen fehlgeschlagen\n\n` +
-                `Fehlertyp: ${error.name}\n` +
-                `Fehlermeldung: ${error.message}\n\n` +
-                `Mögliche Ursache:\n` +
-                `• In-App Browser (Facebook, Instagram, etc.)\n` +
-                `• Browser-Einschränkungen\n\n` +
-                `Lösung: Öffnen Sie die Seite in Chrome:\n` +
-                `Menü (⋮) → "Im Browser öffnen"`;
-            alert(textErrorMsg);
-
-            console.warn('[Share] Teilen als Text fehlgeschlagen:', error);
-            addLogEntry(`[Share] Text teilen gescheitert: ${error.name} - ${error.message}`, 'err');
-        }
-
-        // 6. If we reach here: neither file nor text sharing worked
-        showMessage(
-            'Das direkte Teilen wird von diesem Browser nicht unterstützt. ' +
-            'Bitte öffnen Sie die Seite in Chrome (nicht im In-App Browser).',
-            'err'
-        );
     }
 
     /**
