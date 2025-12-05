@@ -1554,6 +1554,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /**
      * Shares a vCard file without download fallback
      * Only attempts to share via Web Share API
+     * Enhanced with detailed debug alerts for troubleshooting
      * @param {Object} data - Contact data object
      * @param {string} filenamePrefix - Prefix for the filename
      */
@@ -1573,17 +1574,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 3. Check if Web Share API is available
         if (!navigator.share) {
+            const debugInfo = `DEBUG: navigator.share ist NICHT verfügbar!\n\n` +
+                `Browser: ${navigator.userAgent}\n` +
+                `Protokoll: ${window.location.protocol}\n` +
+                `In-App Browser? Öffnen Sie die Seite in Chrome über "Im Browser öffnen"`;
+            alert(debugInfo);
             showMessage(
                 'Teilen wird von diesem Browser nicht unterstützt. ' +
-                'Bitte öffnen Sie die Seite in Chrome oder einem aktuellen Android-Browser.',
+                'Bitte öffnen Sie die Seite in Chrome.',
                 'err'
             );
             return;
         }
 
+        addLogEntry('✓ navigator.share ist verfügbar', 'info');
+
         // 4. Attempt A: Share as file (Web Share Level 2)
-        // Try sharing without canShare check - just attempt it directly
         const file = new File([vcardString], filename, { type: 'text/vcard' });
+
+        // Check if browser supports file sharing
+        let canShareFiles = false;
+        if (navigator.canShare) {
+            canShareFiles = navigator.canShare({ files: [file] });
+            addLogEntry(`canShare({ files }): ${canShareFiles}`, 'info');
+        } else {
+            addLogEntry('navigator.canShare ist nicht verfügbar', 'info');
+        }
 
         try {
             await navigator.share({
@@ -1592,7 +1608,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 text: 'Hier ist meine digitale Visitenkarte.'
             });
 
-            addLogEntry('vCard wurde erfolgreich als Datei geteilt.', 'info');
+            addLogEntry('vCard wurde erfolgreich als Datei geteilt.', 'ok');
             showMessage(t('messages.saveSuccess') || 'Kontakt wurde geteilt.', 'ok');
             return;
         } catch (error) {
@@ -1601,8 +1617,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 addLogEntry('Teilen vom Nutzer abgebrochen', 'info');
                 return;
             }
+
+            // Debug: Show detailed error for file sharing
+            const fileErrorMsg = `DEBUG: Datei-Teilen fehlgeschlagen\n\n` +
+                `Fehlertyp: ${error.name}\n` +
+                `Fehlermeldung: ${error.message}\n` +
+                `canShare Files: ${canShareFiles}\n\n` +
+                `Versuche nun Text-Teilen als Fallback...`;
+            alert(fileErrorMsg);
+
             console.warn('[Share] Teilen mit Datei fehlgeschlagen:', error);
-            addLogEntry(`[Share] Dateien teilen nicht unterstützt: ${error.message}`, 'warn');
+            addLogEntry(`[Share] Dateien teilen gescheitert: ${error.name} - ${error.message}`, 'warn');
         }
 
         // 5. Attempt B: Fallback - share vCard as text
@@ -1613,7 +1638,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 text: vcardString
             });
 
-            addLogEntry('vCard wurde als Text geteilt.', 'info');
+            addLogEntry('vCard wurde als Text geteilt.', 'ok');
             showMessage(t('messages.saveSuccess') || 'Kontakt wurde geteilt.', 'ok');
             return;
         } catch (error) {
@@ -1621,12 +1646,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 addLogEntry('Teilen (Text) vom Nutzer abgebrochen', 'info');
                 return;
             }
+
+            // Debug: Show detailed error for text sharing
+            const textErrorMsg = `DEBUG: Text-Teilen fehlgeschlagen\n\n` +
+                `Fehlertyp: ${error.name}\n` +
+                `Fehlermeldung: ${error.message}\n\n` +
+                `Mögliche Ursache:\n` +
+                `• In-App Browser (Facebook, Instagram, etc.)\n` +
+                `• Browser-Einschränkungen\n\n` +
+                `Lösung: Öffnen Sie die Seite in Chrome:\n` +
+                `Menü (⋮) → "Im Browser öffnen"`;
+            alert(textErrorMsg);
+
             console.warn('[Share] Teilen als Text fehlgeschlagen:', error);
+            addLogEntry(`[Share] Text teilen gescheitert: ${error.name} - ${error.message}`, 'err');
         }
 
         // 6. If we reach here: neither file nor text sharing worked
         showMessage(
-            'Das Teilen der digitalen Visitenkarte wird von diesem Browser oder Gerät nicht unterstützt.',
+            'Das direkte Teilen wird von diesem Browser nicht unterstützt. ' +
+            'Bitte öffnen Sie die Seite in Chrome (nicht im In-App Browser).',
             'err'
         );
     }
