@@ -127,6 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const checkForUpdateBtn = document.getElementById('check-for-update-btn');
     const clearCacheBtn = document.getElementById('clear-cache-btn');
     const installBtn = document.getElementById('install-btn');
+    const iosEditNotice = document.getElementById('ios-edit-notice');
 
     // --- Utility Functions ---
     const debounce = (func, wait) => { let timeout; return function executedFunction(...args) { const later = () => { clearTimeout(timeout); func.apply(this, args); }; clearTimeout(timeout); timeout = setTimeout(later, wait); }; };
@@ -872,6 +873,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 readActions.classList.remove('hidden');
             }
 
+            // Show iOS edit notice if applicable
+            updateIosEditNotice();
+
             // Show raw data in debug section
             if (rawDataOutput) {
                 const vcardString = createVCardString(contactData);
@@ -1010,6 +1014,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (readActions) {
                                 readActions.classList.remove('hidden');
                             }
+
+                            // Show iOS edit notice if applicable
+                            updateIosEditNotice();
 
                             // Expand read result container
                             if (readResultContainer) {
@@ -1315,6 +1322,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         contactCard.appendChild(p);
         if(readActions) readActions.classList.add('hidden');
+        // Hide iOS notice when no data is present
+        updateIosEditNotice();
     }
     function initCollapsibles() { document.querySelectorAll('.collapsible').forEach(el => makeCollapsible(el)) }
 
@@ -1378,6 +1387,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function showMessage(text, type = 'info', duration = 4000) { if(!messageBanner) return; messageBanner.textContent = text; messageBanner.className = 'message-banner'; messageBanner.classList.add(type); messageBanner.classList.remove('hidden'); setTimeout(() => messageBanner.classList.add('hidden'), duration); addLogEntry(text, type); }
+
+    /**
+     * Shows or hides the iOS edit notice based on platform
+     * Only shows on iOS devices when contact data is displayed
+     */
+    function updateIosEditNotice() {
+        if (!iosEditNotice) return;
+
+        // Show notice only on iOS when read actions are visible
+        if (isIOS() && readActions && !readActions.classList.contains('hidden')) {
+            iosEditNotice.classList.remove('hidden');
+        } else {
+            iosEditNotice.classList.add('hidden');
+        }
+    }
 
     function setNfcBadge(state, message = '') {
         if(!nfcStatusBadge) return;
