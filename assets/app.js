@@ -443,14 +443,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if(clearCacheBtn) clearCacheBtn.addEventListener('click', handleClearCache);
         if(installBtn) installBtn.addEventListener('click', showInstallPrompt);
 
+        if (copyToFormBtn) {
+            copyToFormBtn.addEventListener('click', populateFormFromScan);
+        }
+
+        if(saveScannedBtn) saveScannedBtn.addEventListener('click', saveScannedDataAsVcf);
+        if(saveVcfBtn) saveVcfBtn.addEventListener('click', saveFormAsVcf);
+
         if (!isIOS()) {
-            if (copyToFormBtn) {
-                copyToFormBtn.addEventListener('click', populateFormFromScan);
-            }
             if(shareScannedBtn) shareScannedBtn.addEventListener('click', shareScannedDataAsVcf);
-            if(saveScannedBtn) saveScannedBtn.addEventListener('click', saveScannedDataAsVcf);
             if(shareVcfBtn) shareVcfBtn.addEventListener('click', shareFormAsVcf);
-            if(saveVcfBtn) saveVcfBtn.addEventListener('click', saveFormAsVcf);
             if(loadVcfInput) loadVcfInput.addEventListener('change', loadVcfIntoForm);
             if (loadVcfLabel && loadVcfInput) {
                 loadVcfLabel.addEventListener('click', () => {
