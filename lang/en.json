@@ -64,7 +64,8 @@
         "cacheClearSuccess": "Cache cleared successfully! The page will reload.",
         "cacheClearConfirm": "Do you really want to delete all cached data?",
         "installSuccess": "App installed successfully!",
-        "installAccepted": "Preparing installation..."
+        "installAccepted": "Preparing installation...",
+        "iosEditNotice": "💡 Note: To edit data on the NFC tag, you need an Android device or Chrome browser."
     },
     "errors": {
         "NotAllowedError": "Permission for NFC was denied.",

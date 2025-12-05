@@ -227,9 +227,38 @@ h1.logo {
     flex-direction: column;
     gap: 1.5rem;
     /* [KORREKTUR] margin-top entfernt, da der Parent (#read-result) bereits 'gap: 1.5rem' verwendet. */
-    /* margin-top: 1.5rem; */ 
+    /* margin-top: 1.5rem; */
 }
 #auto-write-hint { flex-basis: 100%; text-align: center; }
+
+/* iOS Edit Notice - Info box for iOS users */
+.ios-notice {
+    padding: 1rem 1.2rem;
+    border-radius: 12px;
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    backdrop-filter: blur(10px);
+    margin: 0.5rem 0;
+}
+
+.ios-notice p {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: #93c5fd;
+}
+
+/* Light theme adjustments */
+:root[data-theme="light"] .ios-notice,
+:root[data-theme="customer-brand"] .ios-notice {
+    background-color: #cce5ff;
+    border-color: #b8daff;
+}
+
+:root[data-theme="light"] .ios-notice p,
+:root[data-theme="customer-brand"] .ios-notice p {
+    color: #0c5460;
+}
 
 /* [KORREKTUR] Padding und line-height vereinheitlicht */
 .btn { 
