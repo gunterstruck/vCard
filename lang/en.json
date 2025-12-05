@@ -68,7 +68,7 @@
     },
     "errors": {
         "NotAllowedError": "Permission for NFC was denied.",
-        "NotSupportedError": "Web NFC is not supported on this device.",
+        "NotSupportedError": "Web NFC is not supported on this device. Note: Writing NFC tags is possible on Android using the Chrome browser.",
         "NotFoundError": "No NFC tag was found.",
         "NotReadableError": "The NFC tag could not be read.",
         "NetworkError": "Network error. Please check your connection.",

@@ -68,7 +68,7 @@
     },
     "errors": {
         "NotAllowedError": "Die Berechtigung für NFC wurde verweigert.",
-        "NotSupportedError": "Web NFC wird auf diesem Gerät nicht unterstützt.",
+        "NotSupportedError": "Web NFC wird auf diesem Gerät nicht unterstützt. Hinweis: Das Schreiben von NFC-Tags ist unter Android mit dem Chrome Browser möglich.",
         "NotFoundError": "Kein NFC-Tag gefunden.",
         "NotReadableError": "Der NFC-Tag konnte nicht gelesen werden.",
         "NetworkError": "Netzwerkfehler. Bitte prüfen Sie die Verbindung.",
