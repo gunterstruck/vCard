@@ -1642,54 +1642,33 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Helper function to trigger direct download of vCard file
-     * @param {string} contentString - The vCard content string
-     * @param {string} fileName - The filename for the download
+     * Downloads a vCard file with validation (no sharing)
+     * This function is for SAVE/DOWNLOAD actions, not sharing
+     * @param {Object} data - Contact data object
+     * @param {string} filenamePrefix - Prefix for the filename
      */
-    function triggerDownload(contentString, fileName) {
-        const blob = new Blob([contentString], { type: 'text/vcard;charset=utf-8' });
-        const url = BlobUrlManager.create(blob);
-
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-
-        // Cleanup with longer timeout for mobile devices
-        setTimeout(() => {
-            BlobUrlManager.revoke(url);
-        }, 1000);
-
-        showMessage(t('messages.saveSuccess'), 'ok');
-        addLogEntry('vCard als Download gespeichert', 'ok');
-    }
-
-    async function saveFormAsVcf() {
-        // 1. Validate form data before saving
-        const data = getFormData();
-
-        // Check if there's any data to save
+    function downloadVcf(data, filenamePrefix) {
+        // 1. Validation
         if (!data || Object.keys(data).length === 0) {
-            showMessage(t('errors.noDataToSave') || 'Keine Daten zum Speichern vorhanden', 'err');
-            addLogEntry('VCF-Speicherung blockiert: Keine Daten vorhanden', 'err');
+            showMessage(t('errors.noDataToSave') || 'Keine Daten vorhanden', 'err');
+            addLogEntry('Download blockiert: Keine Daten', 'err');
             return;
         }
 
-        // Validate form data (email format, URL format, etc.)
-        const validationErrors = [];
-
         // Check if at least a name is provided
         if (!data.fn && !data.ln) {
-            validationErrors.push(t('errors.missingName') || 'Mindestens Vor- oder Nachname erforderlich');
+            showMessage(t('errors.missingName') || 'Mindestens Vor- oder Nachname erforderlich', 'err');
+            addLogEntry('Download blockiert: Kein Name', 'err');
+            return;
         }
 
         // Validate email format if provided
         if (data.email) {
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(data.email)) {
-                validationErrors.push(t('errors.invalidEmail') || 'Ungültige E-Mail-Adresse');
+                showMessage(t('errors.invalidEmail') || 'Ungültige E-Mail-Adresse', 'err');
+                addLogEntry('Download blockiert: Ungültige E-Mail', 'err');
+                return;
             }
         }
 
@@ -1698,20 +1677,13 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 new URL(data.url);
             } catch {
-                validationErrors.push(t('errors.invalidUrl') || 'Ungültige URL');
+                showMessage(t('errors.invalidUrl') || 'Ungültige URL', 'err');
+                addLogEntry('Download blockiert: Ungültige URL', 'err');
+                return;
             }
         }
 
-        // If validation errors exist, block download and show errors
-        if (validationErrors.length > 0) {
-            const errorMessage = validationErrors.join('\n');
-            showMessage(errorMessage, 'err', 6000);
-            addLogEntry('VCF-Speicherung blockiert: Validierungsfehler', 'err');
-            return;
-        }
-
-        // 2. Prepare filename and vCard content synchronously (fast!)
-        const fileName = `${data.fn || 'contact'}_${data.ln || 'vcard'}.vcf`;
+        // 2. Generate vCard content
         const vcardString = createVCardString(data);
         const vcardByteSize = new TextEncoder().encode(vcardString).length;
 
@@ -1719,44 +1691,47 @@ document.addEventListener('DOMContentLoaded', () => {
         if (vcardByteSize > CONFIG.NTAG216_CAPACITY) {
             const errorMsg = `vCard zu groß (${vcardByteSize} Bytes). Maximum: ${CONFIG.NTAG216_CAPACITY} Bytes. Bitte Daten kürzen.`;
             showMessage(errorMsg, 'err', 6000);
-            addLogEntry(`VCF-Speicherung blockiert: ${vcardByteSize} Bytes > ${CONFIG.NTAG216_CAPACITY} Bytes`, 'err');
+            addLogEntry(`Download blockiert: ${vcardByteSize} Bytes > ${CONFIG.NTAG216_CAPACITY} Bytes`, 'err');
             return;
         }
 
-        const file = new File([vcardString], fileName, { type: 'text/vcard' });
+        // 3. Generate filename
+        let filename = (filenamePrefix || 'kontakt').replace(/[^a-z0-9äöüß_\-]/gi, '_');
+        if (!filename.toLowerCase().endsWith('.vcf')) filename += '.vcf';
 
-        // 3. Platform-specific strategy: iOS vs Android/Desktop
-        if (isIOS() && navigator.canShare && navigator.canShare({ files: [file] })) {
-            // --- STRATEGY iOS: SHARE SHEET ---
-            try {
-                // IMPORTANT: No long await before this point to maintain user gesture!
-                await navigator.share({
-                    files: [file],
-                    title: 'Kontakt speichern',
-                });
-                showMessage(t('messages.saveSuccess'), 'ok');
-                addLogEntry('vCard über iOS Share Sheet geteilt', 'ok');
-            } catch (error) {
-                // AbortError is normal (user cancelled)
-                if (error.name === 'AbortError') {
-                    addLogEntry('Teilen vom Nutzer abgebrochen', 'info');
-                    return;
-                }
+        // 4. Trigger download
+        const blob = new Blob([vcardString], { type: 'text/vcard;charset=utf-8' });
+        const url = BlobUrlManager.create(blob);
 
-                // On real error: fallback to download
-                console.warn('iOS Share fehlgeschlagen, versuche Download:', error);
-                addLogEntry(`iOS Share fehlgeschlagen (${error.name}), Fallback zu Download`, 'warn');
-                triggerDownload(vcardString, fileName);
-            }
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
 
-        } else {
-            // --- STRATEGY ANDROID / DESKTOP: DOWNLOAD ---
-            // On Android, download leads directly to "Open" -> Contact import
-            // This bypasses the strict Share API permissions on Android
-            addLogEntry('Nutze Download-Strategie (Android/Desktop)', 'info');
-            triggerDownload(vcardString, fileName);
-        }
+        // Cleanup
+        setTimeout(() => {
+            BlobUrlManager.revoke(url);
+        }, 1000);
+
+        showMessage(t('messages.saveSuccess') + ` (${vcardByteSize} Bytes)`, 'ok');
+        addLogEntry(`vCard als Download gespeichert: ${filename}`, 'ok');
     }
+
+    /**
+     * Downloads the form data as vCard (only download, no sharing)
+     */
+    function downloadFormAsVcf() {
+        const data = getFormData();
+        const fullName = [data.fn, data.ln].filter(Boolean).join(' ').trim();
+        const filenamePrefix = fullName || 'kontakt';
+
+        downloadVcf(data, filenamePrefix);
+    }
+
+    // Alias for backwards compatibility
+    const saveFormAsVcf = downloadFormAsVcf;
 
     function loadVcfIntoForm(event) {
         const file = event.target.files[0];
@@ -1943,77 +1918,25 @@ document.addEventListener('DOMContentLoaded', () => {
      * Saves the currently scanned data as a VCF file
      * Uses platform-specific strategy (iOS: share, Android: download)
      */
-    async function saveScannedDataAsVcf() {
-        // 1. Check if scanned data exists
+    /**
+     * Downloads the scanned data as vCard (only download, no sharing)
+     */
+    function downloadScannedDataAsVcf() {
         if (!appState.scannedDataObject) {
             showMessage(t('messages.noDataToSave') || 'Keine Daten zum Speichern vorhanden', 'err');
-            addLogEntry('VCF-Speicherung blockiert: Keine gescannten Daten vorhanden', 'err');
+            addLogEntry('Download blockiert: Keine gescannten Daten', 'err');
             return;
         }
 
         const data = appState.scannedDataObject;
+        const fullName = [data.fn, data.ln].filter(Boolean).join(' ').trim();
+        const filenamePrefix = fullName || 'scan';
 
-        // Validate that we have meaningful data
-        if (!data || Object.keys(data).length === 0) {
-            showMessage(t('errors.noDataToSave') || 'Keine Daten zum Speichern vorhanden', 'err');
-            addLogEntry('VCF-Speicherung blockiert: Gescannte Daten sind leer', 'err');
-            return;
-        }
-
-        // Check if at least a name is provided
-        if (!data.fn && !data.ln) {
-            showMessage(t('errors.missingName') || 'Mindestens Vor- oder Nachname erforderlich', 'err');
-            addLogEntry('VCF-Speicherung blockiert: Kein Name in gescannten Daten', 'err');
-            return;
-        }
-
-        // 2. Prepare filename and vCard content synchronously (fast!)
-        const fileName = `${data.fn || 'contact'}_${data.ln || 'vcard'}.vcf`;
-        const vcardString = createVCardString(data);
-        const vcardByteSize = new TextEncoder().encode(vcardString).length;
-
-        // Enforce payload size limits
-        if (vcardByteSize > CONFIG.NTAG216_CAPACITY) {
-            const errorMsg = `vCard zu groß (${vcardByteSize} Bytes). Maximum: ${CONFIG.NTAG216_CAPACITY} Bytes. Bitte Daten kürzen.`;
-            showMessage(errorMsg, 'err', 6000);
-            addLogEntry(`VCF-Speicherung blockiert: ${vcardByteSize} Bytes > ${CONFIG.NTAG216_CAPACITY} Bytes`, 'err');
-            return;
-        }
-
-        const file = new File([vcardString], fileName, { type: 'text/vcard' });
-
-        // 3. Platform-specific strategy: iOS vs Android/Desktop
-        if (isIOS() && navigator.canShare && navigator.canShare({ files: [file] })) {
-            // --- STRATEGY iOS: SHARE SHEET ---
-            try {
-                // IMPORTANT: No long await before this point to maintain user gesture!
-                await navigator.share({
-                    files: [file],
-                    title: 'Kontakt speichern',
-                });
-                showMessage(t('messages.saveSuccess'), 'ok');
-                addLogEntry('vCard über iOS Share Sheet geteilt', 'ok');
-            } catch (error) {
-                // AbortError is normal (user cancelled)
-                if (error.name === 'AbortError') {
-                    addLogEntry('Teilen vom Nutzer abgebrochen', 'info');
-                    return;
-                }
-
-                // On real error: fallback to download
-                console.warn('iOS Share fehlgeschlagen, versuche Download:', error);
-                addLogEntry(`iOS Share fehlgeschlagen (${error.name}), Fallback zu Download`, 'warn');
-                triggerDownload(vcardString, fileName);
-            }
-
-        } else {
-            // --- STRATEGY ANDROID / DESKTOP: DOWNLOAD ---
-            // On Android, download leads directly to "Open" -> Contact import
-            // This bypasses the strict Share API permissions on Android
-            addLogEntry('Nutze Download-Strategie (Android/Desktop)', 'info');
-            triggerDownload(vcardString, fileName);
-        }
+        downloadVcf(data, filenamePrefix);
     }
+
+    // Alias for backwards compatibility
+    const saveScannedDataAsVcf = downloadScannedDataAsVcf;
 
     /**
      * Shows the PWA installation prompt
