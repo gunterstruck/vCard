@@ -1644,6 +1644,8 @@ document.addEventListener('DOMContentLoaded', () => {
     /**
      * Downloads a vCard file with validation (no sharing)
      * This function is for SAVE/DOWNLOAD actions, not sharing
+     * iOS: Navigates to data URL to trigger native contact import
+     * Android/Desktop: Classic download with blob URL
      * @param {Object} data - Contact data object
      * @param {string} filenamePrefix - Prefix for the filename
      */
@@ -1695,11 +1697,25 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 3. Generate filename
+        // 3. Generate filename (only relevant for Android/Desktop)
         let filename = (filenamePrefix || 'kontakt').replace(/[^a-z0-9äöüß_\-]/gi, '_');
         if (!filename.toLowerCase().endsWith('.vcf')) filename += '.vcf';
 
-        // 4. Trigger download
+        // 4. iOS: Navigate to vCard resource (no download, direct import)
+        if (isIOS()) {
+            // Create data URL for vCard
+            const dataUrl = 'data:text/vcard;charset=utf-8,' + encodeURIComponent(vcardString);
+
+            // Navigate to the vCard - iOS Safari will recognize it and offer to import
+            window.location.href = dataUrl;
+
+            // Log success
+            addLogEntry('iOS: vCard-Import gestartet', 'info');
+            showMessage('vCard wird geöffnet. Tippen Sie auf "Erstellen" um den Kontakt zu speichern.', 'ok', 6000);
+            return;
+        }
+
+        // 5. Android/Desktop: Classic download with blob
         const blob = new Blob([vcardString], { type: 'text/vcard;charset=utf-8' });
         const url = BlobUrlManager.create(blob);
 
