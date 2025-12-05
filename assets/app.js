@@ -1503,29 +1503,61 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!filename.toLowerCase().endsWith('.vcf')) {
             filename += '.vcf';
         }
-        const file = new File([blob], filename, { type: 'text/vcard' });
 
-        // Try Web Share API first (iOS Safari supports this!)
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        // Try Web Share API first (works on iOS and modern Android)
+        if (navigator.share) {
             try {
-                await navigator.share({
-                    files: [file],
-                    title: 'vCard speichern',
-                    text: 'Hier ist die digitale Visitenkarte.'
-                });
-                showMessage(t('messages.saveSuccess') + ` (${vcardByteSize} Bytes)`, 'ok');
-                addLogEntry('vCard via Web Share API geteilt', 'ok');
-                return; // Skip download, sharing was successful
-            } catch (error) {
-                // User cancelled or sharing failed
-                if (error.name === 'AbortError') {
-                    // User cancelled, don't show error or fallback
-                    addLogEntry('Teilen abgebrochen', 'info');
-                    return;
+                // Create file with multiple MIME type attempts for better compatibility
+                const file = new File([blob], filename, { type: 'text/vcard' });
+
+                // Log what we're attempting
+                console.log('[Share] Attempting Web Share API');
+                addLogEntry('Versuche Web Share API...', 'info');
+
+                // Check if we can share (but don't rely on it completely)
+                const canShareFiles = navigator.canShare && navigator.canShare({ files: [file] });
+                console.log('[Share] canShare result:', canShareFiles);
+
+                // Try to share even if canShare is false - iOS sometimes reports false but works anyway
+                if (canShareFiles || isIOS() || navigator.userAgent.includes('Android')) {
+                    try {
+                        await navigator.share({
+                            files: [file],
+                            title: 'Kontakt speichern',
+                            text: 'Digitale Visitenkarte'
+                        });
+                        showMessage(t('messages.saveSuccess') + ` (${vcardByteSize} Bytes)`, 'ok');
+                        addLogEntry('vCard via Web Share API geteilt', 'ok');
+                        return; // Success!
+                    } catch (shareError) {
+                        console.log('[Share] Share attempt failed:', shareError.name, shareError.message);
+
+                        // User cancelled - this is OK, don't fall back to download
+                        if (shareError.name === 'AbortError') {
+                            addLogEntry('Teilen abgebrochen', 'info');
+                            return;
+                        }
+
+                        // If share failed for other reasons, try without text parameter (iOS compatibility)
+                        console.log('[Share] Retrying without text parameter...');
+                        try {
+                            await navigator.share({ files: [file] });
+                            showMessage(t('messages.saveSuccess') + ` (${vcardByteSize} Bytes)`, 'ok');
+                            addLogEntry('vCard via Web Share API geteilt (Retry)', 'ok');
+                            return;
+                        } catch (retryError) {
+                            if (retryError.name === 'AbortError') {
+                                addLogEntry('Teilen abgebrochen', 'info');
+                                return;
+                            }
+                            console.warn('[Share] Retry also failed:', retryError);
+                            addLogEntry(`Web Share fehlgeschlagen: ${retryError.message}`, 'info');
+                        }
+                    }
                 }
-                // Sharing failed, fall through to download
-                console.warn('Web Share API failed, falling back to download:', error);
-                addLogEntry('Web Share fehlgeschlagen, verwende Download', 'info');
+            } catch (error) {
+                console.warn('[Share] Web Share setup failed:', error);
+                addLogEntry('Web Share nicht verfügbar, verwende Download', 'info');
             }
         }
 
@@ -1773,29 +1805,61 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!filename.toLowerCase().endsWith('.vcf')) {
             filename += '.vcf';
         }
-        const file = new File([blob], filename, { type: 'text/vcard' });
 
-        // Try Web Share API first (iOS Safari supports this!)
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        // Try Web Share API first (works on iOS and modern Android)
+        if (navigator.share) {
             try {
-                await navigator.share({
-                    files: [file],
-                    title: 'vCard speichern',
-                    text: 'Hier ist die digitale Visitenkarte.'
-                });
-                showMessage(t('messages.saveSuccess') + ` (${vcardByteSize} Bytes)`, 'ok');
-                addLogEntry('vCard via Web Share API geteilt', 'ok');
-                return; // Skip download, sharing was successful
-            } catch (error) {
-                // User cancelled or sharing failed
-                if (error.name === 'AbortError') {
-                    // User cancelled, don't show error or fallback
-                    addLogEntry('Teilen abgebrochen', 'info');
-                    return;
+                // Create file with multiple MIME type attempts for better compatibility
+                const file = new File([blob], filename, { type: 'text/vcard' });
+
+                // Log what we're attempting
+                console.log('[Share] Attempting Web Share API (scanned data)');
+                addLogEntry('Versuche Web Share API...', 'info');
+
+                // Check if we can share (but don't rely on it completely)
+                const canShareFiles = navigator.canShare && navigator.canShare({ files: [file] });
+                console.log('[Share] canShare result:', canShareFiles);
+
+                // Try to share even if canShare is false - iOS sometimes reports false but works anyway
+                if (canShareFiles || isIOS() || navigator.userAgent.includes('Android')) {
+                    try {
+                        await navigator.share({
+                            files: [file],
+                            title: 'Kontakt speichern',
+                            text: 'Digitale Visitenkarte'
+                        });
+                        showMessage(t('messages.saveSuccess') + ` (${vcardByteSize} Bytes)`, 'ok');
+                        addLogEntry('vCard via Web Share API geteilt', 'ok');
+                        return; // Success!
+                    } catch (shareError) {
+                        console.log('[Share] Share attempt failed:', shareError.name, shareError.message);
+
+                        // User cancelled - this is OK, don't fall back to download
+                        if (shareError.name === 'AbortError') {
+                            addLogEntry('Teilen abgebrochen', 'info');
+                            return;
+                        }
+
+                        // If share failed for other reasons, try without text parameter (iOS compatibility)
+                        console.log('[Share] Retrying without text parameter...');
+                        try {
+                            await navigator.share({ files: [file] });
+                            showMessage(t('messages.saveSuccess') + ` (${vcardByteSize} Bytes)`, 'ok');
+                            addLogEntry('vCard via Web Share API geteilt (Retry)', 'ok');
+                            return;
+                        } catch (retryError) {
+                            if (retryError.name === 'AbortError') {
+                                addLogEntry('Teilen abgebrochen', 'info');
+                                return;
+                            }
+                            console.warn('[Share] Retry also failed:', retryError);
+                            addLogEntry(`Web Share fehlgeschlagen: ${retryError.message}`, 'info');
+                        }
+                    }
                 }
-                // Sharing failed, fall through to download
-                console.warn('Web Share API failed, falling back to download:', error);
-                addLogEntry('Web Share fehlgeschlagen, verwende Download', 'info');
+            } catch (error) {
+                console.warn('[Share] Web Share setup failed:', error);
+                addLogEntry('Web Share nicht verfügbar, verwende Download', 'info');
             }
         }
 
