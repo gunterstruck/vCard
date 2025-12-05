@@ -20,7 +20,7 @@
     "city": "Ville",
     "country": "Pays",
     "address": "Adresse",
-    "saveFile": "Enregistrer en .vcf",
+    "saveFile": "Enregistrer contact",
     "loadFile": "Charger vCard",
     "importContact": "Importer un contact",
     "saveAsContact": "Enregistrer comme contact",
