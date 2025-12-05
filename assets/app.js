@@ -130,7 +130,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Utility Functions ---
     const debounce = (func, wait) => { let timeout; return function executedFunction(...args) { const later = () => { clearTimeout(timeout); func.apply(this, args); }; clearTimeout(timeout); timeout = setTimeout(later, wait); }; };
-    const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+    /**
+     * Enhanced iOS detection that works with modern iPads (M1/M2 chips)
+     * iPads with M1/M2 chips report as MacIntel but have touch support
+     */
+    const isIOS = () => {
+        return [
+            'iPad Simulator',
+            'iPhone Simulator',
+            'iPod Simulator',
+            'iPad',
+            'iPhone',
+            'iPod'
+        ].includes(navigator.platform)
+        // iPad on iOS 13+ detection (reports as MacIntel but has touch)
+        || (navigator.userAgent.includes("Mac") && "ontouchend" in document);
+    };
 
     // --- Internationalization (i18n) ---
     function t(key, options = {}) { let text = key.split('.').reduce((obj, i) => obj?.[i], appState.translations); if (!text) { console.warn(`Translation not found for key: ${key}`); return key; } if (options.replace) { for (const [placeholder, value] of Object.entries(options.replace)) { text = text.replace(`{${placeholder}}`, value); } } return text; }
@@ -343,6 +359,21 @@ document.addEventListener('DOMContentLoaded', () => {
             autoExpandToFitScreen(readResultContainer);
             readResultContainer.classList.add('expanded');
             readResultContainer.style.maxHeight = '';
+        }
+
+        // iOS Install Prompt
+        // Show install hint for iOS users who haven't installed the app yet
+        if (isIOS() && !window.navigator.standalone) {
+            // Wait a bit before showing the hint (not intrusive)
+            setTimeout(() => {
+                showMessage(
+                    "💡 Tipp: Tippen Sie auf 'Teilen' " +
+                    (navigator.userAgent.includes('Safari') ? '(unten)' : '') +
+                    " und 'Zum Home-Bildschirm', um die App zu installieren.",
+                    'info',
+                    8000
+                );
+            }, 3000);
         }
     }
     main();
@@ -1257,7 +1288,23 @@ document.addEventListener('DOMContentLoaded', () => {
         manifestLink.href = BlobUrlManager.create(blob); // Use BlobUrlManager instead of direct URL.createObjectURL
     }
     function applyTheme(themeName) { const themeButtons = document.querySelectorAll('.theme-btn'); document.documentElement.setAttribute('data-theme', themeName); localStorage.setItem('vcard-theme', themeName); themeButtons.forEach(btn => { btn.classList.toggle('active', btn.dataset.theme === themeName); }); const metaThemeColor = document.querySelector('meta[name="theme-color"]'); if (metaThemeColor) { const colors = { dark: '#0f172a', light: '#f8f9fa', 'customer-brand': '#FCFCFD' }; metaThemeColor.setAttribute('content', colors[themeName] || '#FCFCFD'); } }
-    function setupReadTabInitialState() { contactCard.innerHTML = ''; const p = document.createElement('p'); p.className = 'placeholder-text'; p.textContent = t('placeholderRead'); contactCard.appendChild(p); if(readActions) readActions.classList.add('hidden'); }
+    function setupReadTabInitialState() {
+        contactCard.innerHTML = '';
+        const p = document.createElement('p');
+        p.className = 'placeholder-text';
+
+        // iOS-specific placeholder text
+        if (isIOS()) {
+            p.innerHTML =
+                "iPhone oben an den NFC-Tag halten.<br>" +
+                "<small style='opacity: 0.8;'>(Scannen erfolgt automatisch im Hintergrund)</small>";
+        } else {
+            p.textContent = t('placeholderRead');
+        }
+
+        contactCard.appendChild(p);
+        if(readActions) readActions.classList.add('hidden');
+    }
     function initCollapsibles() { document.querySelectorAll('.collapsible').forEach(el => makeCollapsible(el)) }
 
     function checkNfcSupport() {
@@ -1327,9 +1374,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const isWriteMode = writeTab?.classList.contains('active') || false;
 
         if (isIOS()) {
-            nfcStatusBadge.textContent = t('status.iosRead');
+            // iOS-specific badge text
+            nfcStatusBadge.textContent = t('status.iosRead') || 'iPhone oben an Tag halten';
             nfcStatusBadge.className = 'nfc-badge';
             nfcStatusBadge.classList.add('info');
+
+            // Update placeholder text in contact card for iOS
+            const placeholder = contactCard?.querySelector('.placeholder-text');
+            if (placeholder && !appState.scannedDataObject) {
+                placeholder.innerHTML =
+                    "iPhone oben an den NFC-Tag halten.<br>" +
+                    "<small style='opacity: 0.8;'>(Scannen erfolgt automatisch im Hintergrund)</small>";
+            }
             return;
         }
 
@@ -1381,7 +1437,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showMessage(t('messages.copySuccess'), 'ok');
     }
 
-    function saveFormAsVcf() {
+    async function saveFormAsVcf() {
         // Validate form data before saving
         const data = getFormData();
 
@@ -1440,22 +1496,49 @@ document.addEventListener('DOMContentLoaded', () => {
         // Log successful validation with size info
         addLogEntry(`VCF-Speicherung: ${vcardByteSize} Bytes (Limit: ${CONFIG.NTAG216_CAPACITY} Bytes)`, 'ok');
 
-        // Proceed with download
+        // Create blob and file
         const blob = new Blob([vcardString], { type: 'text/vcard' });
-        const url = BlobUrlManager.create(blob); // Use BlobUrlManager
-        const a = document.createElement('a');
-        a.href = url;
         let filename = [data.fn, data.ln].filter(Boolean).join('_') || 'contact';
         // Force .vcf extension
         if (!filename.toLowerCase().endsWith('.vcf')) {
             filename += '.vcf';
         }
+        const file = new File([blob], filename, { type: 'text/vcard' });
+
+        // Try Web Share API first (iOS Safari supports this!)
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+                await navigator.share({
+                    files: [file],
+                    title: 'vCard speichern',
+                    text: 'Hier ist die digitale Visitenkarte.'
+                });
+                showMessage(t('messages.saveSuccess') + ` (${vcardByteSize} Bytes)`, 'ok');
+                addLogEntry('vCard via Web Share API geteilt', 'ok');
+                return; // Skip download, sharing was successful
+            } catch (error) {
+                // User cancelled or sharing failed
+                if (error.name === 'AbortError') {
+                    // User cancelled, don't show error or fallback
+                    addLogEntry('Teilen abgebrochen', 'info');
+                    return;
+                }
+                // Sharing failed, fall through to download
+                console.warn('Web Share API failed, falling back to download:', error);
+                addLogEntry('Web Share fehlgeschlagen, verwende Download', 'info');
+            }
+        }
+
+        // Fallback: Traditional download (for Desktop/Android)
+        const url = BlobUrlManager.create(blob);
+        const a = document.createElement('a');
+        a.href = url;
         a.download = filename;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         setTimeout(() => {
-            BlobUrlManager.revoke(url); // Use BlobUrlManager for cleanup
+            BlobUrlManager.revoke(url);
         }, CONFIG.URL_REVOKE_DELAY);
         showMessage(t('messages.saveSuccess') + ` (${vcardByteSize} Bytes)`, 'ok');
     }
@@ -1644,7 +1727,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /**
      * Saves the currently scanned data as a VCF file
      */
-    function saveScannedDataAsVcf() {
+    async function saveScannedDataAsVcf() {
         // Check if scanned data exists
         if (!appState.scannedDataObject) {
             showMessage(t('messages.noDataToSave') || 'Keine Daten zum Speichern vorhanden', 'err');
@@ -1683,24 +1766,50 @@ document.addEventListener('DOMContentLoaded', () => {
         // Log successful validation with size info
         addLogEntry(`VCF-Speicherung (gescannt): ${vcardByteSize} Bytes (Limit: ${CONFIG.NTAG216_CAPACITY} Bytes)`, 'ok');
 
-        // Proceed with download
+        // Create blob and file
         const blob = new Blob([vcardString], { type: 'text/vcard' });
-        const url = BlobUrlManager.create(blob); // Use BlobUrlManager
-        const a = document.createElement('a');
-        a.href = url;
-
         let filename = [data.fn, data.ln].filter(Boolean).join('_') || 'scanned_contact';
         // Force .vcf extension
         if (!filename.toLowerCase().endsWith('.vcf')) {
             filename += '.vcf';
         }
+        const file = new File([blob], filename, { type: 'text/vcard' });
+
+        // Try Web Share API first (iOS Safari supports this!)
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+                await navigator.share({
+                    files: [file],
+                    title: 'vCard speichern',
+                    text: 'Hier ist die digitale Visitenkarte.'
+                });
+                showMessage(t('messages.saveSuccess') + ` (${vcardByteSize} Bytes)`, 'ok');
+                addLogEntry('vCard via Web Share API geteilt', 'ok');
+                return; // Skip download, sharing was successful
+            } catch (error) {
+                // User cancelled or sharing failed
+                if (error.name === 'AbortError') {
+                    // User cancelled, don't show error or fallback
+                    addLogEntry('Teilen abgebrochen', 'info');
+                    return;
+                }
+                // Sharing failed, fall through to download
+                console.warn('Web Share API failed, falling back to download:', error);
+                addLogEntry('Web Share fehlgeschlagen, verwende Download', 'info');
+            }
+        }
+
+        // Fallback: Traditional download (for Desktop/Android)
+        const url = BlobUrlManager.create(blob);
+        const a = document.createElement('a');
+        a.href = url;
         a.download = filename;
 
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         setTimeout(() => {
-            BlobUrlManager.revoke(url); // Use BlobUrlManager for cleanup
+            BlobUrlManager.revoke(url);
         }, CONFIG.URL_REVOKE_DELAY);
         showMessage(t('messages.saveSuccess') + ` (${vcardByteSize} Bytes)`, 'ok');
     }

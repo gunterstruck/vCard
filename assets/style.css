@@ -81,6 +81,9 @@ body {
     -moz-osx-font-smoothing: grayscale;
     min-height: 100vh;
     transition: background-color 0.3s, color 0.3s;
+    /* iOS Safe Area Support */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
 }
 
 body::before {
@@ -124,6 +127,8 @@ header {
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
     margin-bottom: 1.5rem;
     animation: slideDown 0.6s ease-out;
+    /* iOS Safe Area: Additional top margin for notch */
+    margin-top: env(safe-area-inset-top);
 }
 
 /* Helper for transparent colors */
@@ -399,7 +404,7 @@ fieldset legend { padding: 0 0.75rem; color: var(--primary-color); }
 @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
 
 footer { padding: 1.5rem 0; text-align: center; }
-.message-banner { padding: 1.2rem 1.5rem; border-radius: 12px; font-weight: 600; opacity: 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); transform: translateY(20px); backdrop-filter: blur(10px); border: 1px solid; position: fixed; bottom: 1.5rem; left: 1.5rem; right: 1.5rem; z-index: 100; max-width: 900px; margin: 0 auto; }
+.message-banner { padding: 1.2rem 1.5rem; border-radius: 12px; font-weight: 600; opacity: 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); transform: translateY(20px); backdrop-filter: blur(10px); border: 1px solid; position: fixed; bottom: calc(1.5rem + env(safe-area-inset-bottom)); left: 1.5rem; right: 1.5rem; z-index: 100; max-width: 900px; margin: 0 auto; }
 .message-banner:not(.hidden) { opacity: 1; transform: translateY(0); }
 .message-banner.ok { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border-color: rgba(16, 185, 129, 0.3); box-shadow: 0 4px 20px rgba(16, 185, 129, 0.2); }
 :root[data-theme="light"] .message-banner.ok, :root[data-theme="customer-brand"] .message-banner.ok { color: var(--success-color); background-color: #d1e7dd; border-color: #badbcc; }
