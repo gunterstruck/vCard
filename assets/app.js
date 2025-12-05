@@ -437,39 +437,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setupEventListeners() {
         // --- 1. Basis-UI (Immer aktiv) ---
-        if(tabsContainer) tabsContainer.addEventListener('click', handleTabClick);
-        if(themeSwitcher) themeSwitcher.addEventListener('click', handleThemeChange);
-        if(nfcStatusBadge) nfcStatusBadge.addEventListener('click', handleNfcAction);
-        if(checkForUpdateBtn) checkForUpdateBtn.addEventListener('click', handleCheckForUpdate);
-        if(clearCacheBtn) clearCacheBtn.addEventListener('click', handleClearCache);
-        if(installBtn) installBtn.addEventListener('click', showInstallPrompt);
+        if (tabsContainer)  tabsContainer.addEventListener('click', handleTabClick);
+        if (themeSwitcher)  themeSwitcher.addEventListener('click', handleThemeChange);
+        if (nfcStatusBadge) nfcStatusBadge.addEventListener('click', handleNfcAction);
+        if (checkForUpdateBtn) checkForUpdateBtn.addEventListener('click', handleCheckForUpdate);
+        if (clearCacheBtn)  clearCacheBtn.addEventListener('click', handleClearCache);
+        if (installBtn)     installBtn.addEventListener('click', showInstallPrompt);
 
         // --- 2. Kern-Funktionen (Jetzt auch für iOS freigeschaltet) ---
         // Diese Aktionen führen rein lokale Logik oder Downloads aus, die iOS mittlerweile handhaben kann.
         
         // "Ins Formular kopieren" (Rein DOM-basiert, sicher für iOS)
-        if (copyToFormBtn) copyToFormBtn.addEventListener('click', populateFormFromScan);
+        if (copyToFormBtn)  copyToFormBtn.addEventListener('click', populateFormFromScan);
         
         // "Kontakt speichern" (Formular -> Datei)
-        if(saveVcfBtn) saveVcfBtn.addEventListener('click', saveFormAsVcf);
+        if (saveVcfBtn)     saveVcfBtn.addEventListener('click', saveFormAsVcf);
         
         // "Kontakt speichern" (Scan -> Datei)
-        if(saveScannedBtn) saveScannedBtn.addEventListener('click', saveScannedDataAsVcf);
+        if (saveScannedBtn) saveScannedBtn.addEventListener('click', saveScannedDataAsVcf);
 
         // Optional: Teilen-Buttons auch freigeben, falls die shareVcfUniversal Funktion implementiert wurde
-        if(shareVcfBtn) shareVcfBtn.addEventListener('click', shareFormAsVcf);
-        if(shareScannedBtn) shareScannedBtn.addEventListener('click', shareScannedDataAsVcf);
+        if (shareVcfBtn)     shareVcfBtn.addEventListener('click', shareFormAsVcf);
+        if (shareScannedBtn) shareScannedBtn.addEventListener('click', shareScannedDataAsVcf);
 
         // --- 3. Plattform-Spezifische Einschränkungen (Nur Nicht-iOS) ---
         // Dateisystem-Zugriff (Upload) und Kontakt-Picker sind auf iOS WebKit oft problematisch oder nicht vorhanden.
         if (!isIOS()) {
-            if(loadVcfInput) loadVcfInput.addEventListener('change', loadVcfIntoForm);
+            if (loadVcfInput) loadVcfInput.addEventListener('change', loadVcfIntoForm);
             if (loadVcfLabel && loadVcfInput) {
                 loadVcfLabel.addEventListener('click', () => {
                     loadVcfInput.click();
                 });
             }
-            if(importContactBtn) importContactBtn.addEventListener('click', importFromContacts);
+            if (importContactBtn) importContactBtn.addEventListener('click', importFromContacts);
         }
 
         // --- 4. Formular-Logik (Immer aktiv) ---
